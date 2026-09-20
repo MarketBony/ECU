@@ -157,6 +157,25 @@ select option{background:#14141f}
   background:rgba(255,255,255,.08);border:1px solid var(--glass-border)}
 .tag.grad{background:linear-gradient(95deg,rgba(247,86,50,.22),rgba(143,18,171,.22));
   border-color:rgba(247,86,50,.3)}
+/* Étiquettes des plus grosses masses — en DOM, donc nettes à tout zoom.
+   pointer-events:none : elles ne doivent jamais voler un clic à la scène. */
+#etiquettes{position:fixed;inset:0;pointer-events:none;z-index:1}
+.etiq{position:absolute;top:0;left:0;white-space:nowrap;font-size:11px;
+  font-weight:500;letter-spacing:.01em;color:rgba(255,255,255,.88);
+  text-shadow:0 0 9px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.9);
+  transform-origin:0 0;margin:10px 0 0 11px;transition:opacity .25s}
+
+/* Curseur temporel */
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;
+  background:transparent;cursor:pointer;margin:3px 0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:3px;
+  background:linear-gradient(90deg,var(--bony-nuit),var(--bony-violet),var(--bony-orange))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:15px;height:15px;border-radius:50%;background:#fff;margin-top:-5.5px;
+  box-shadow:0 0 0 3px rgba(247,86,50,.28),0 2px 5px rgba(0,0,0,.5)}
+input[type=range]:focus{outline:none}
+input[type=range]:focus::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(247,86,50,.4)}
+
 /* bouton d'action : pill dégradé charte (.gx-gradient côté gearbox) */
 .act{display:block;width:100%;margin-top:11px;padding:8px 12px;border:0;cursor:pointer;
   border-radius:10px;font:inherit;font-size:12.5px;font-weight:500;color:#fff;
@@ -233,6 +252,7 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
 <div class="bg-blob blob-c"></div>
 
 <div id="ui">
+  <div id="etiquettes"></div>
   <aside id="hud" class="glass">
     <div id="head">
       <img src="logo.svg" alt="">
@@ -275,7 +295,13 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
         </select>
       </div>
       <div class="grp">
+        <label for="temps">Activité — <span id="temps-l">tout l'historique</span></label>
+        <input id="temps" type="range" min="0" max="4" step="1" value="0">
+      </div>
+      <div class="grp">
         <label>Rendu</label>
+        <div class="sw" id="sw-comm"><span>Vue communautés</span><span class="track"><i></i></span></div>
+        <div class="sw on" id="sw-etiq"><span>Noms des géantes</span><span class="track"><i></i></span></div>
         <div class="sw on" id="sw-pulse"><span>Impulsions électriques</span><span class="track"><i></i></span></div>
         <div class="sw on" id="sw-links"><span>Liens</span><span class="track"><i></i></span></div>
         <div class="sw on" id="sw-inf"><span>Liens inférés</span><span class="track"><i></i></span></div>
