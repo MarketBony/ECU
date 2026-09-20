@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t">
+  <title id="t">ECU — Engine Control Unit, réseau de connaissance Bony</title>
+  <!--
+    ECU · Engine Control Unit
+    Le calculateur : un boîtier de commande dont le cœur est la grille en H
+    d'une boîte de vitesses — reprise directe de la marque gearbox — reliée
+    à ses broches comme un neurone à ses synapses.
+    Dégradé charte Bony : #f75632 (Pantone 172 C) -> #8f12ab (Pantone 2602 C).
+  -->
+  <defs>
+    <linearGradient id="bony" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632"/>
+      <stop offset=".52" stop-color="#c1348c"/>
+      <stop offset="1" stop-color="#8f12ab"/>
+    </linearGradient>
+    <linearGradient id="bonySoft" x1="96" y1="128" x2="416" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity=".55"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="256" cy="248" r="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".30"/>
+      <stop offset=".55" stop-color="#8f12ab" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- plaque : noir charte, coins arrondis -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#0a0a12"/>
+  <circle cx="256" cy="248" r="200" fill="url(#halo)"/>
+
+  <!-- broches du boîtier -->
+  <g fill="url(#bonySoft)">
+    <rect x="150" y="74"  width="17" height="34" rx="8"/>
+    <rect x="203" y="74"  width="17" height="34" rx="8"/>
+    <rect x="292" y="74"  width="17" height="34" rx="8"/>
+    <rect x="345" y="74"  width="17" height="34" rx="8"/>
+    <rect x="150" y="404" width="17" height="34" rx="8"/>
+    <rect x="203" y="404" width="17" height="34" rx="8"/>
+    <rect x="292" y="404" width="17" height="34" rx="8"/>
+    <rect x="345" y="404" width="17" height="34" rx="8"/>
+    <rect x="74"  y="150" width="34" height="17" rx="8"/>
+    <rect x="74"  y="203" width="34" height="17" rx="8"/>
+    <rect x="74"  y="292" width="34" height="17" rx="8"/>
+    <rect x="74"  y="345" width="34" height="17" rx="8"/>
+    <rect x="404" y="150" width="34" height="17" rx="8"/>
+    <rect x="404" y="203" width="34" height="17" rx="8"/>
+    <rect x="404" y="292" width="34" height="17" rx="8"/>
+    <rect x="404" y="345" width="34" height="17" rx="8"/>
+  </g>
+
+  <!-- die : le corps du calculateur -->
+  <rect x="108" y="108" width="296" height="296" rx="52"
+        fill="none" stroke="url(#bony)" stroke-width="11" opacity=".92"/>
+  <rect x="108" y="108" width="296" height="296" rx="52" fill="#0d0d17" opacity=".7"/>
+
+  <!-- grille en H de boîte de vitesses = le cœur -->
+  <g stroke="url(#bony)" stroke-width="20" stroke-linecap="round" fill="none" filter="url(#glow)">
+    <!-- barre de grille -->
+    <path d="M176 256 H336"/>
+    <!-- rails -->
+    <path d="M176 196 V316"/>
+    <path d="M256 196 V316"/>
+    <path d="M336 196 V316"/>
+  </g>
+  <!-- pommeaux : les nœuds du réseau -->
+  <g fill="url(#bony)" filter="url(#glow)">
+    <circle cx="176" cy="196" r="21"/>
+    <circle cx="336" cy="196" r="21"/>
+    <circle cx="176" cy="316" r="21"/>
+    <circle cx="336" cy="316" r="21"/>
+    <circle cx="256" cy="196" r="15"/>
+    <circle cx="256" cy="316" r="15"/>
+  </g>
+  <circle cx="256" cy="256" r="12" fill="#0a0a12" stroke="url(#bony)" stroke-width="7"/>
+</svg>

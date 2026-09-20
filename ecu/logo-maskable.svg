@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="tm">
+  <title id="tm">ECU — icône masquable (zone de sécurité Android)</title>
+  <!-- Variante masquable : fond pleine page, motif ramené dans les 60 % centraux
+       pour qu'aucun masque Android ne rogne la grille en H. -->
+  <defs>
+    <linearGradient id="bonyM" x1="160" y1="160" x2="352" y2="352" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632"/>
+      <stop offset=".52" stop-color="#c1348c"/>
+      <stop offset="1" stop-color="#8f12ab"/>
+    </linearGradient>
+    <radialGradient id="haloM" cx="256" cy="256" r="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" fill="#0a0a12"/>
+  <circle cx="256" cy="256" r="190" fill="url(#haloM)"/>
+
+  <g transform="translate(256 256) scale(.62) translate(-256 -256)">
+    <rect x="108" y="108" width="296" height="296" rx="52"
+          fill="none" stroke="url(#bonyM)" stroke-width="13" opacity=".9"/>
+    <g stroke="url(#bonyM)" stroke-width="22" stroke-linecap="round" fill="none">
+      <path d="M176 256 H336"/>
+      <path d="M176 196 V316"/>
+      <path d="M256 196 V316"/>
+      <path d="M336 196 V316"/>
+    </g>
+    <g fill="url(#bonyM)">
+      <circle cx="176" cy="196" r="23"/>
+      <circle cx="336" cy="196" r="23"/>
+      <circle cx="176" cy="316" r="23"/>
+      <circle cx="336" cy="316" r="23"/>
+      <circle cx="256" cy="196" r="16"/>
+      <circle cx="256" cy="316" r="16"/>
+    </g>
+    <circle cx="256" cy="256" r="13" fill="#0a0a12" stroke="url(#bonyM)" stroke-width="8"/>
+  </g>
+</svg>

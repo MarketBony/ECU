@@ -71,7 +71,7 @@ Copy-Item (Join-Path $env:USERPROFILE '.graphify\global-graph.json') (Join-Path 
 Push-Location $Kb
 graphify export html --graph '.\global-graph.json' *>$null
 Pop-Location
-& $Py (Join-Path $Root '_build3d.py')
+& $Py (Join-Path $Root '_layout3d.py')
 
 Write-Host ''
 Write-Host '=== Termine ===' -ForegroundColor Green

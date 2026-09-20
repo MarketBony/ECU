@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ECU — Engine Control Unit</title>
+<meta name="description" content="Réseau de connaissance des projets Bony auto-mobile">
+<meta name="theme-color" content="#0a0a12">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ECU">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Albert+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* ───────────────────────────────────────────────────────────────
+   Charte Bony — brandbook.pdf p.20-25, via le réseau lui-même
+     dégradé principal  #f75632 (Pantone 172 C) → #8f12ab (2602 C)
+     accompagnement     bleu nuit #293f74 (295 C), noir Pantone Black C
+     titres  Syncopate — « avec parcimonie » : ici le seul mot ECU
+     lecture Albert Sans, substitution Arial
+   Liquid Glass — THEME-LIQUID-GLASS.md : « la couche est purement ADDITIVE »
+     Le verre ne touche QUE l'interface. Jamais la scène 3D.
+   ─────────────────────────────────────────────────────────────── */
+:root{
+  --bony-orange:#f75632;
+  --bony-violet:#8f12ab;
+  --bony-nuit:#293f74;
+  --noir:#0a0a12;
+
+  --glass-bg:rgba(20,20,32,.52);
+  --glass-bg-strong:rgba(16,16,26,.74);
+  --glass-border:rgba(255,255,255,.11);
+  --glass-blur:22px;
+  --glass-sat:1.5;
+
+  --fg:#ece9f4;
+  --muted:#9a95ae;
+  --radius:16px;
+  --gap:14px;
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;height:100%;overflow:hidden;background:var(--noir);color:var(--fg);
+  font:14px/1.5 'Albert Sans',Arial,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overscroll-behavior:none;
+}
+canvas{display:block;position:fixed;inset:0;touch-action:none}
+
+/* fond spatial — blobs de charte, repris de .gx-blob (index.html gearbox) */
+.bg-blob{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;opacity:.30}
+.blob-a{width:62vw;height:62vw;left:-16vw;top:-18vw;
+  background:radial-gradient(circle,var(--bony-orange),transparent 68%);
+  animation:drift-a 34s ease-in-out infinite alternate}
+.blob-b{width:56vw;height:56vw;right:-14vw;bottom:-16vw;
+  background:radial-gradient(circle,var(--bony-violet),transparent 68%);
+  animation:drift-b 41s ease-in-out infinite alternate}
+.blob-c{width:40vw;height:40vw;right:16vw;top:-14vw;
+  background:radial-gradient(circle,var(--bony-nuit),transparent 70%);
+  animation:drift-a 52s ease-in-out infinite alternate-reverse}
+@keyframes drift-a{to{transform:translate3d(7vw,9vh,0) scale(1.13)}}
+@keyframes drift-b{to{transform:translate3d(-8vw,-7vh,0) scale(1.09)}}
+
+/* ── Liquid Glass : uniquement l'UI ───────────────────────────── */
+.glass{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius);
+  box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+  position:relative;
+}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass{
+    -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+    backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  }
+}
+/* Fallback @supports not backdrop-filter — le verre devient opaque, jamais illisible */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass{background:rgba(14,14,24,.94)}
+}
+/* liseré supérieur dégradé : la signature charte, additive */
+.glass::before{
+  content:'';position:absolute;inset:0 0 auto;height:1px;border-radius:var(--radius) var(--radius) 0 0;
+  background:linear-gradient(90deg,transparent,rgba(247,86,50,.6),rgba(143,18,171,.6),transparent);
+  pointer-events:none;
+}
+.glass-strong{background:var(--glass-bg-strong)}
+
+/* ── Panneaux ─────────────────────────────────────────────────── */
+#ui{position:fixed;inset:0;z-index:2;pointer-events:none}
+#ui > *{pointer-events:auto}
+
+#hud{position:fixed;left:var(--gap);top:var(--gap);width:268px;
+  max-height:calc(100vh - var(--gap)*2);display:flex;flex-direction:column}
+#head{padding:15px 16px 12px;display:flex;align-items:center;gap:11px;flex:0 0 auto}
+#head img{width:38px;height:38px;border-radius:10px;flex:0 0 auto}
+#head .t{font-family:'Syncopate','Albert Sans',Arial,sans-serif;font-weight:700;
+  font-size:17px;letter-spacing:.14em;
+  background:linear-gradient(95deg,var(--bony-orange),var(--bony-violet));
+  -webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.1}
+#head .s{font-size:11px;color:var(--muted);letter-spacing:.02em;margin-top:2px}
+#scroll{overflow-y:auto;padding:0 16px 15px;scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.18) transparent}
+#scroll::-webkit-scrollbar{width:7px}
+#scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:4px}
+
+.grp{margin-bottom:15px}
+.grp>label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);margin-bottom:7px;font-weight:600}
+input[type=search],select{width:100%;background:rgba(255,255,255,.06);color:var(--fg);
+  border:1px solid var(--glass-border);border-radius:10px;padding:8px 11px;
+  font:inherit;font-size:13px;transition:border-color .18s,box-shadow .18s}
+input[type=search]:focus,select:focus{outline:none;border-color:rgba(247,86,50,.65);
+  box-shadow:0 0 0 3px rgba(247,86,50,.14)}
+select{cursor:pointer}
+select option{background:#14141f}
+
+.legend{display:flex;flex-direction:column;gap:2px;max-height:290px;overflow-y:auto}
+.lg{display:flex;align-items:center;gap:9px;font-size:12.5px;cursor:pointer;
+  padding:5px 7px;border-radius:9px;transition:background .15s,opacity .15s;user-select:none}
+.lg:hover{background:rgba(255,255,255,.07)}
+.lg.off{opacity:.3}
+.dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;
+  box-shadow:0 0 9px currentColor}
+.lg .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cnt{margin-left:auto;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+.sw{display:flex;align-items:center;justify-content:space-between;gap:9px;
+  font-size:12.5px;padding:6px 7px;border-radius:9px;cursor:pointer;user-select:none}
+.sw:hover{background:rgba(255,255,255,.07)}
+.track{width:34px;height:19px;border-radius:99px;background:rgba(255,255,255,.14);
+  position:relative;flex:0 0 auto;transition:background .2s}
+.track i{position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;
+  background:#fff;transition:transform .2s}
+.sw.on .track{background:linear-gradient(90deg,var(--bony-orange),var(--bony-violet))}
+.sw.on .track i{transform:translateX(15px)}
+
+/* ── Panneau d'inspection ─────────────────────────────────────── */
+#info{position:fixed;right:var(--gap);top:var(--gap);width:330px;
+  max-height:calc(100vh - var(--gap)*2);display:none;flex-direction:column}
+#info.show{display:flex}
+#ihead{padding:15px 16px 11px;flex:0 0 auto}
+#ihead h2{margin:0 0 4px;font-size:15px;font-weight:600;word-break:break-word;padding-right:22px}
+#ihead .f{color:var(--muted);font-size:11.5px;word-break:break-word;font-variant-numeric:tabular-nums}
+#close{position:absolute;top:11px;right:12px;width:24px;height:24px;border:0;border-radius:7px;
+  background:rgba(255,255,255,.07);color:var(--muted);font-size:15px;line-height:1;cursor:pointer}
+#close:hover{background:rgba(255,255,255,.15);color:var(--fg)}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.tag{padding:2.5px 9px;border-radius:99px;font-size:10.5px;letter-spacing:.02em;
+  background:rgba(255,255,255,.08);border:1px solid var(--glass-border)}
+.tag.grad{background:linear-gradient(95deg,rgba(247,86,50,.22),rgba(143,18,171,.22));
+  border-color:rgba(247,86,50,.3)}
+#ilist{overflow-y:auto;padding:0 16px 15px;scrollbar-width:thin}
+#ilist h3{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  margin:13px 0 7px;font-weight:600}
+.cx{display:flex;gap:8px;align-items:baseline;font-size:12.5px;padding:5px 7px;
+  border-radius:8px;cursor:pointer;transition:background .14s}
+.cx:hover{background:rgba(255,255,255,.07)}
+.cx .ar{color:var(--bony-orange);flex:0 0 auto;font-size:11px}
+.cx .nm{flex:1;min-width:0;word-break:break-word}
+.cx .rl{color:var(--muted);font-size:10.5px}
+
+/* ── Barre du bas ─────────────────────────────────────────────── */
+#foot{position:fixed;left:50%;bottom:var(--gap);transform:translateX(-50%);
+  padding:9px 17px;font-size:11.5px;color:var(--muted);display:flex;gap:15px;
+  align-items:center;white-space:nowrap}
+#foot b{color:var(--fg);font-variant-numeric:tabular-nums;font-weight:600}
+#fps{font-variant-numeric:tabular-nums}
+kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
+  border-radius:5px;padding:1px 6px;font-size:10.5px;font-family:inherit}
+
+/* ── Chargement ───────────────────────────────────────────────── */
+#boot{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;background:var(--noir);
+  transition:opacity .6s ease}
+#boot.gone{opacity:0;pointer-events:none}
+#boot img{width:84px;height:84px;border-radius:20px;
+  animation:beat 2.1s ease-in-out infinite}
+@keyframes beat{0%,100%{transform:scale(1);filter:brightness(1)}
+  50%{transform:scale(1.045);filter:brightness(1.22)}}
+#boot .t{font-family:'Syncopate','Albert Sans',Arial,sans-serif;font-weight:700;
+  font-size:22px;letter-spacing:.22em;
+  background:linear-gradient(95deg,var(--bony-orange),var(--bony-violet));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+#boot .s{font-size:12.5px;color:var(--muted);letter-spacing:.04em}
+#bar{width:190px;height:2.5px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+#bar i{display:block;height:100%;width:22%;border-radius:2px;
+  background:linear-gradient(90deg,var(--bony-orange),var(--bony-violet));
+  animation:slide 1.25s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(560%)}}
+
+@media (max-width:760px){
+  #hud{width:calc(100vw - var(--gap)*2);max-height:44vh}
+  #info{right:var(--gap);left:var(--gap);width:auto;top:auto;bottom:56px;max-height:42vh}
+  #foot{font-size:10.5px;gap:10px;padding:7px 12px}
+  .legend{max-height:150px}
+}
+@media (prefers-reduced-motion:reduce){
+  .bg-blob,#boot img,#bar i{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-blob blob-a"></div>
+<div class="bg-blob blob-b"></div>
+<div class="bg-blob blob-c"></div>
+
+<div id="ui">
+  <aside id="hud" class="glass">
+    <div id="head">
+      <img src="logo.svg" alt="">
+      <div>
+        <div class="t">ECU</div>
+        <div class="s">Engine Control Unit · Bony</div>
+      </div>
+    </div>
+    <div id="scroll">
+      <div class="grp">
+        <label for="q">Chercher un nœud</label>
+        <input id="q" type="search" placeholder="DataService, brandbook…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="grp">
+        <label for="mode">Couleur par</label>
+        <select id="mode">
+          <option value="r">Projet</option>
+          <option value="c">Communauté</option>
+          <option value="t">Type de fichier</option>
+        </select>
+      </div>
+      <div class="grp">
+        <label>Légende — clic pour filtrer</label>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="grp">
+        <label>Rendu</label>
+        <div class="sw on" id="sw-pulse"><span>Impulsions électriques</span><span class="track"><i></i></span></div>
+        <div class="sw on" id="sw-links"><span>Liens</span><span class="track"><i></i></span></div>
+        <div class="sw on" id="sw-inf"><span>Liens inférés</span><span class="track"><i></i></span></div>
+        <div class="sw on" id="sw-spin"><span>Rotation auto</span><span class="track"><i></i></span></div>
+      </div>
+    </div>
+  </aside>
+
+  <aside id="info" class="glass glass-strong">
+    <div id="ihead">
+      <button id="close" title="Fermer">×</button>
+      <h2 id="i-label"></h2>
+      <div class="f" id="i-file"></div>
+      <div class="tags" id="i-tags"></div>
+    </div>
+    <div id="ilist">
+      <h3>Connexions <span id="i-n"></span></h3>
+      <div id="i-cx"></div>
+    </div>
+  </aside>
+
+  <div id="foot" class="glass">
+    <span><b id="n-nodes">—</b> neurones</span>
+    <span><b id="n-links">—</b> synapses</span>
+    <span id="fps">—</span>
+    <span><kbd>glisser</kbd> pivoter</span>
+    <span><kbd>molette</kbd> zoom</span>
+    <span><kbd>clic droit</kbd> déplacer</span>
+  </div>
+</div>
+
+<div id="boot">
+  <img src="logo.svg" alt="">
+  <div class="t">ECU</div>
+  <div class="s">initialisation du calculateur…</div>
+  <div id="bar"><i></i></div>
+</div>
+
+<script type="module" src="ecu.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
