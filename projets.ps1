@@ -1,4 +1,4 @@
-# Source unique de verite : les projets Bony qui alimentent le reseau.
+﻿# Source unique de verite : les projets Bony qui alimentent le reseau.
 # Pour ajouter un projet, ajoute une ligne ici — rien d'autre a modifier.
 #
 #   Tag    nom dans le graphe global (idealement = nom du depot GitHub)

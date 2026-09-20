@@ -14,7 +14,24 @@ function Get-PythonECU {
 
     $cands = New-Object System.Collections.Generic.List[string]
 
-    # 1. ce que uv declare lui-meme
+    # 1. D'ABORD les applications empaquetees. C'est contre-intuitif mais c'est
+    #    le seul chemin NON virtualise : quand l'installation vient de l'app
+    #    Claude, AppData\Roaming\uv\tools et `uv tool dir` renvoient tous deux la
+    #    projection du bac a sable, qui n'existe pas depuis un vrai terminal.
+    #    Ce chemin-ci, lui, est valide des deux cotes. Hors bac a sable il
+    #    n'existe simplement pas et on passe a la suite.
+    Get-ChildItem "$env:LOCALAPPDATA\Packages" -Directory -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $p = Join-Path $_.FullName 'LocalCache\Roaming\uv\tools\graphifyy\Scripts\python.exe'
+            if (Test-Path $p) { $cands.Add($p) }
+        }
+
+    # 2. emplacements usuels
+    $cands.Add("$env:APPDATA\uv\tools\graphifyy\Scripts\python.exe")
+    $cands.Add("$env:LOCALAPPDATA\uv\tools\graphifyy\Scripts\python.exe")
+    $cands.Add("$env:USERPROFILE\pipx\venvs\graphifyy\Scripts\python.exe")
+
+    # 3. ce que uv declare (virtualise s'il est interroge depuis le bac a sable)
     $uv = $null
     $c = Get-Command uv -ErrorAction SilentlyContinue
     if ($c) { $uv = $c.Source }
@@ -25,18 +42,6 @@ function Get-PythonECU {
         $d = (& $uv tool dir 2>$null)
         if ($d) { $cands.Add((Join-Path $d.Trim() 'graphifyy\Scripts\python.exe')) }
     }
-
-    # 2. emplacements usuels
-    $cands.Add("$env:APPDATA\uv\tools\graphifyy\Scripts\python.exe")
-    $cands.Add("$env:LOCALAPPDATA\uv\tools\graphifyy\Scripts\python.exe")
-    $cands.Add("$env:USERPROFILE\pipx\venvs\graphifyy\Scripts\python.exe")
-
-    # 3. toute application empaquetee (le nom du paquet Claude peut changer)
-    Get-ChildItem "$env:LOCALAPPDATA\Packages" -Directory -ErrorAction SilentlyContinue |
-        ForEach-Object {
-            $p = Join-Path $_.FullName 'LocalCache\Roaming\uv\tools\graphifyy\Scripts\python.exe'
-            if (Test-Path $p) { $cands.Add($p) }
-        }
 
     foreach ($p in $cands) {
         if (-not $p -or -not (Test-Path $p)) { continue }
