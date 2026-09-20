@@ -18,13 +18,16 @@ Graphe de connaissance unifié des projets du groupe Bony auto-mobile, construit
 
 | Dépôt | Nœuds | Arêtes | Communautés |
 |---|---:|---:|---:|
-| gearbox | 1 360 | 3 357 | 82 |
-| GRID | **1 146** | **2 168** | **83** |
-| Forum-2026 | 479 | 697 | 69 |
-| clutch-press-review | 15 | 18 | 3 |
-| **Global** | **3 004** | **6 236** | — |
+| gearbox | 1 653 | 3 749 | 100 |
+| GRID | 1 146 | 2 168 | 83 |
+| Forum-2026 | 558 | 845 | 77 |
+| clutch-press-review | 64 | 88 | 10 |
+| **Global** | **3 425** | **6 844** | — |
 
-Réduction mesurée : **14,5× moins de tokens par question** (`graphify benchmark`).
+Les 4 dépôts ont la passe **code + documents**. 273 communautés nommées.
+
+Réduction mesurée : **16,6× moins de tokens par question** (`graphify benchmark`),
+et jusqu'à **103×** sur les questions d'architecture.
 
 ## Usage quotidien
 
@@ -54,18 +57,21 @@ le graphe du dépôt se régénère tout seul à chaque commit et à chaque chan
 
 Après un `git pull`, lancer `graphify update <dépôt>` (aucun LLM, instantané).
 
-## Passe sémantique (docs, PDF) — faite pour GRID uniquement
+## Passe sémantique — terminée sur les 4 dépôts
 
-GRID a reçu la passe complète (19 fichiers : docs + logo), via le modèle de l'assistant
-Claude Code — coût mesuré 365 030 tokens. Les trois autres dépôts n'ont que la passe code.
+48 fichiers non-code extraits (docs, workflows, PDF, logos) via le modèle de
+l'assistant Claude Code, sans clé API.
 
-La clé Gemini n'a pas pu servir : le compte Google est restreint (403 PERMISSION_DENIED
-sur toute génération, création de clé API interdite). Pour reprendre par API :
+| Dépôt | Fichiers | Coût |
+|---|---:|---:|
+| gearbox | 24 | 554 662 |
+| GRID | 19 | 365 030 |
+| Forum-2026 | 10 | 231 123 |
+| clutch-press-review | 5 | 142 580 |
+| **Total** | **58** | **1 293 395** |
 
-```powershell
-$env:ANTHROPIC_API_KEY = "..."        # ou GEMINI_API_KEY, OPENAI_API_KEY
-.\rebuild.ps1 -Docs
-```
+Coût unique : le cache ne relit que les fichiers modifiés. La passe code, elle,
+reste gratuite et se régénère seule à chaque commit.
 
-Alternative gratuite et hors-ligne : `uv tool install "graphifyy[ollama]"` puis
-`graphify extract <dépôt> --backend ollama --global --as <tag>`.
+> La clé Gemini n'a pas pu servir : le compte Google est restreint
+> (403 PERMISSION_DENIED sur toute génération, création de clé API refusée).
