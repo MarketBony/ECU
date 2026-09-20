@@ -16,7 +16,8 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $Kb
 $Ecu  = Join-Path $Kb 'ecu'
-$Py   = Join-Path $env:APPDATA 'uv\tools\graphifyy\Scripts\python.exe'
+. (Join-Path $Kb 'python.ps1')
+$Py   = Get-PythonECU
 $Port = 7420
 $Url  = "http://127.0.0.1:$Port/index.html"
 $PidF = Join-Path $env:TEMP 'ecu-serveur.pid'
@@ -64,6 +65,11 @@ Write-Host '   reseau de connaissance Bony' -ForegroundColor DarkGray
 Write-Host ''
 
 if (-not (Test-Path $Ecu)) { Write-Host "  Dossier ECU introuvable : $Ecu" -ForegroundColor Red; Fin 1 }
+if (-not $Py) {
+    Write-Host '  Python porteur de graphify introuvable.' -ForegroundColor Red
+    Write-Host '  Reinstalle avec :  uv tool install "graphifyy[all]"' -ForegroundColor DarkGray
+    Fin 1
+}
 
 # ── 1. rafraichir le graphe (gratuit, aucun LLM) ──
 if (-not $Vite) {

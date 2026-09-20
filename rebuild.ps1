@@ -14,7 +14,8 @@ $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $Kb
-$Py   = Join-Path $env:APPDATA 'uv\tools\graphifyy\Scripts\python.exe'
+. (Join-Path $Kb 'python.ps1')
+$Py   = Get-PythonECU
 
 . (Join-Path $Kb 'projets.ps1')
 

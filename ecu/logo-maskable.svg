@@ -1,15 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="tm">
   <title id="tm">ECU — icône masquable (zone de sécurité Android)</title>
-  <!-- Variante masquable : fond pleine page, motif ramené dans les 60 % centraux
-       pour qu'aucun masque Android ne rogne la grille en H. -->
+  <!-- Fond pleine page, motif ramené dans les 62 % centraux pour qu'aucun
+       masque Android ne rogne les pistes. -->
   <defs>
-    <linearGradient id="bonyM" x1="160" y1="160" x2="352" y2="352" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bonyM" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#f75632"/>
-      <stop offset=".52" stop-color="#c1348c"/>
+      <stop offset=".5" stop-color="#c1348c"/>
       <stop offset="1" stop-color="#8f12ab"/>
     </linearGradient>
+    <linearGradient id="pinM" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity=".5"/>
+    </linearGradient>
     <radialGradient id="haloM" cx="256" cy="256" r="190" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f75632" stop-opacity=".26"/>
+      <stop offset="0" stop-color="#f75632" stop-opacity=".24"/>
       <stop offset="1" stop-color="#8f12ab" stop-opacity="0"/>
     </radialGradient>
   </defs>
@@ -18,22 +22,53 @@
   <circle cx="256" cy="256" r="190" fill="url(#haloM)"/>
 
   <g transform="translate(256 256) scale(.62) translate(-256 -256)">
-    <rect x="108" y="108" width="296" height="296" rx="52"
-          fill="none" stroke="url(#bonyM)" stroke-width="13" opacity=".9"/>
-    <g stroke="url(#bonyM)" stroke-width="22" stroke-linecap="round" fill="none">
-      <path d="M176 256 H336"/>
-      <path d="M176 196 V316"/>
-      <path d="M256 196 V316"/>
-      <path d="M336 196 V316"/>
+    <g fill="url(#pinM)">
+      <rect x="156" y="70" width="16" height="32" rx="7"/>
+      <rect x="208" y="70" width="16" height="32" rx="7"/>
+      <rect x="288" y="70" width="16" height="32" rx="7"/>
+      <rect x="340" y="70" width="16" height="32" rx="7"/>
+      <rect x="156" y="410" width="16" height="32" rx="7"/>
+      <rect x="208" y="410" width="16" height="32" rx="7"/>
+      <rect x="288" y="410" width="16" height="32" rx="7"/>
+      <rect x="340" y="410" width="16" height="32" rx="7"/>
+      <rect x="70" y="156" width="32" height="16" rx="7"/>
+      <rect x="70" y="208" width="32" height="16" rx="7"/>
+      <rect x="70" y="288" width="32" height="16" rx="7"/>
+      <rect x="70" y="340" width="32" height="16" rx="7"/>
+      <rect x="410" y="156" width="32" height="16" rx="7"/>
+      <rect x="410" y="208" width="32" height="16" rx="7"/>
+      <rect x="410" y="288" width="32" height="16" rx="7"/>
+      <rect x="410" y="340" width="32" height="16" rx="7"/>
+    </g>
+    <rect x="102" y="102" width="308" height="308" rx="46"
+          fill="#0c0c16" stroke="url(#bonyM)" stroke-width="12"/>
+    <g fill="none" stroke="url(#bonyM)" stroke-width="13"
+       stroke-linecap="round" stroke-linejoin="round">
+      <path d="M216 214 V170 H164"/>
+      <path d="M256 208 V138"/>
+      <path d="M296 214 V170 H348"/>
+      <path d="M216 298 V342 H164"/>
+      <path d="M256 304 V374"/>
+      <path d="M296 298 V342 H348"/>
+      <path d="M214 236 H150 L128 258"/>
+      <path d="M208 276 H138"/>
+      <path d="M298 236 H362 L384 258"/>
+      <path d="M304 276 H374"/>
     </g>
     <g fill="url(#bonyM)">
-      <circle cx="176" cy="196" r="23"/>
-      <circle cx="336" cy="196" r="23"/>
-      <circle cx="176" cy="316" r="23"/>
-      <circle cx="336" cy="316" r="23"/>
-      <circle cx="256" cy="196" r="16"/>
-      <circle cx="256" cy="316" r="16"/>
+      <circle cx="164" cy="170" r="16"/>
+      <circle cx="348" cy="170" r="16"/>
+      <circle cx="164" cy="342" r="16"/>
+      <circle cx="348" cy="342" r="16"/>
+      <circle cx="256" cy="138" r="14"/>
+      <circle cx="256" cy="374" r="14"/>
+      <circle cx="128" cy="258" r="13"/>
+      <circle cx="384" cy="258" r="13"/>
+      <circle cx="138" cy="276" r="12"/>
+      <circle cx="374" cy="276" r="12"/>
     </g>
-    <circle cx="256" cy="256" r="13" fill="#0a0a12" stroke="url(#bonyM)" stroke-width="8"/>
+    <rect x="206" y="206" width="100" height="100" rx="20"
+          fill="#0a0a12" stroke="url(#bonyM)" stroke-width="13"/>
+    <rect x="230" y="230" width="52" height="52" rx="11" fill="url(#bonyM)"/>
   </g>
 </svg>

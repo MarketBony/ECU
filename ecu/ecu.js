@@ -1,37 +1,48 @@
 /* ECU — Engine Control Unit
  * Réseau de connaissance des projets Bony auto-mobile.
  *
- * Pourquoi c'est rapide, là où la version précédente ramait :
- *   - la disposition 3D est PRÉCALCULÉE hors ligne (_layout3d.py) et figée ;
- *     aucune simulation de forces ne tourne dans le navigateur.
- *   - tous les nœuds forment UN seul THREE.Points → 1 appel de dessin.
- *     Toutes les arêtes forment UN seul THREE.LineSegments → 1 appel.
- *     La version précédente créait un objet 3D par nœud (3 663 objets).
- *   - la lueur et l'impulsion électrique sont calculées dans le fragment
- *     shader, pas en post-traitement : le coût est en pixels, pas en objets.
+ * Pourquoi c'est rapide :
+ *   - les deux dispositions 3D sont PRÉCALCULÉES hors ligne (_layout3d.py) et
+ *     figées ; aucune simulation de forces ne tourne dans le navigateur.
+ *   - tous les nœuds forment UN seul THREE.Points, toutes les arêtes UN seul
+ *     THREE.LineSegments : 2 appels de dessin pour 3 663 nœuds et 6 973 liens.
+ *   - lueur et impulsion sont calculées en fragment shader, pas en
+ *     post-traitement : le coût est en pixels, pas en objets.
  *
- * Charte Bony (brandbook.pdf p.24-25) : #f75632 → #8f12ab, bleu nuit #293f74.
+ * Charte Bony (brandbook.pdf p.24-25, retrouvée via le réseau lui-même) :
+ * #f75632 → #8f12ab, bleu nuit #293f74.
  */
 import * as THREE from './vendor/three.module.min.js';
 
-const BONY = { orange: 0xf75632, violet: 0x8f12ab, nuit: 0x4a6bbd };
+const BONY = { orange: 0xf75632, violet: 0x8f12ab, nuit: 0x4a6bbd, magenta: 0xd4327a };
+
+// Tranches d'ancienneté, du plus frais au plus dormant.
+const AGES = [
+  { l: 'moins de 7 j', max: 7, c: 0xff6a3d },
+  { l: '7 à 30 j', max: 30, c: 0xf0417a },
+  { l: '1 à 3 mois', max: 90, c: 0xb9259c },
+  { l: '3 à 6 mois', max: 180, c: 0x8f12ab },
+  { l: 'plus de 6 mois', max: 1e9, c: 0x4a6bbd },
+  { l: 'date inconnue', max: null, c: 0x55556a },
+];
 
 // ── Palette ────────────────────────────────────────────────────────────────
-// Ancrée sur le dégradé de marque : l'arc orange → magenta → violet, décliné
-// en luminosité pour séparer les catégories sans sortir de la charte.
-// L'arc va de l'orange (18°) au bleu nuit (220°) en DESCENDANT par le rouge, le
-// magenta et le violet — exactement le chemin du dégradé de marque. Monter par
-// le jaune et le vert sortirait de la charte : c'est interdit ici.
+// Arc de marque : orange (18°) → bleu nuit (220°) en DESCENDANT par le rouge,
+// le magenta et le violet. Monter par le jaune et le vert sortirait de la charte.
+//
+// Limite assumée : au-delà d'une douzaine de catégories, deux teintes voisines
+// de cet arc deviennent difficiles à distinguer. C'est le prix de la charte —
+// et c'est pourquoi la légende reste filtrable au clic.
 function palette(n) {
   const out = [];
   if (n <= 4) {
-    const base = [BONY.orange, BONY.violet, BONY.nuit, 0xd4327a];
+    const base = [BONY.orange, BONY.violet, BONY.nuit, BONY.magenta];
     for (let i = 0; i < n; i++) out.push(new THREE.Color(base[i]));
     return out;
   }
   for (let i = 0; i < n; i++) {
     const t = (i * 0.6180339887) % 1;              // suite dorée : voisins contrastés
-    const hue = ((18 - t * 158) + 360) % 360;      // 18° → 220°, par le magenta
+    const hue = ((18 - t * 158) + 360) % 360;
     const sat = 0.66 + ((i * 7) % 5) * 0.055;
     const lig = 0.55 + ((i * 3) % 4) * 0.065;
     out.push(new THREE.Color().setHSL(hue / 360, Math.min(sat, 0.93), Math.min(lig, 0.76)));
@@ -44,32 +55,42 @@ const NODE_VERT = `
 attribute float aSize;
 attribute vec3  aColor;
 attribute float aDim;
+attribute float aHot;
 varying vec3  vColor;
 varying float vDim;
+varying float vHot;
 uniform float uScale;
 uniform float uBoost;
+uniform float uMaxSize;
 void main() {
-  vColor = aColor;
-  vDim   = aDim;
+  vColor = aColor; vDim = aDim; vHot = aHot;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = aSize * uBoost * uScale / max(-mv.z, 1.0);
+  float s = aSize * uBoost * (1.0 + aHot * 0.7) * uScale / max(-mv.z, 1.0);
+  // Plafond : sans lui, un hub proche de la caméra couvre un quart de l'écran
+  // en pixels translucides additifs, et le coût de remplissage effondre la
+  // fréquence d'images sans rien apporter de lisible.
+  gl_PointSize = clamp(s, 1.0, uMaxSize);
   gl_Position = projectionMatrix * mv;
 }`;
 
 const NODE_FRAG = `
 varying vec3  vColor;
 varying float vDim;
+varying float vHot;
 uniform float uOpacity;
 void main() {
   vec2 c = gl_PointCoord - 0.5;
   float d = length(c);
   if (d > 0.5) discard;
-  // noyau net + halo exponentiel : la lueur sans post-traitement
   float core = smoothstep(0.48, 0.05, d);
   float halo = exp(-d * d * 11.0) - 0.03;
   float a = (core * 0.92 + max(halo, 0.0) * 0.6) * uOpacity;
   vec3 col = mix(vColor, vec3(1.0), core * core * 0.42);
-  a *= mix(1.0, 0.055, vDim);
+  col = mix(col, vec3(1.0, 0.95, 0.88), vHot * 0.55);   // nœud d'un chemin tracé
+  // 0,11 et non 0,05 : un chemin trace ne doit pas faire disparaitre le
+  // reseau, sinon on perd le contexte qui donne son sens au chemin.
+  a *= mix(1.0, 0.11, vDim);
+  a *= 1.0 + vHot * 0.8;
   if (a < 0.004) discard;
   gl_FragColor = vec4(col, a);
 }`;
@@ -79,33 +100,52 @@ attribute vec3  aColor;
 attribute float aT;
 attribute float aPhase;
 attribute float aDim;
+attribute float aConf;   // 0 = EXTRACTED, 1 = INFERRED
+attribute float aHot;
 varying vec3  vColor;
 varying float vT;
 varying float vPhase;
 varying float vDim;
+varying float vConf;
+varying float vHot;
 void main() {
-  vColor = aColor; vT = aT; vPhase = aPhase; vDim = aDim;
+  vColor = aColor; vT = aT; vPhase = aPhase; vDim = aDim; vConf = aConf; vHot = aHot;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
+// L'impulsion dit quelque chose de vrai : sur un lien EXTRACTED (lu tel quel dans
+// la source) elle est rapide, brève et blanche — une certitude. Sur un lien
+// INFERRED (déduit par graphify) elle est lente, large et reste teintée : une
+// hypothèse qui circule plus mollement.
 const LINK_FRAG = `
 varying vec3  vColor;
 varying float vT;
 varying float vPhase;
 varying float vDim;
+varying float vConf;
+varying float vHot;
 uniform float uTime;
 uniform float uPulse;
 uniform float uBase;
 void main() {
-  // impulsion : une bosse gaussienne qui remonte le fil, décalée par arête
-  float p = fract(uTime * 0.19 + vPhase);
+  float vitesse  = mix(0.26, 0.09, vConf);
+  float etroit   = mix(320.0, 46.0, vConf);
+  float eclat    = mix(0.95, 0.42, vConf);
+  float blanc    = mix(0.70, 0.18, vConf);
+
+  float p = fract(uTime * vitesse + vPhase);
   float d = vT - p;
-  d -= floor(d + 0.5);                       // distance circulaire
-  float pulse = exp(-d * d * 300.0) * uPulse;
-  float a = uBase + pulse * 0.9;
-  // la crête vire au blanc chaud — l'arc électrique
-  vec3 col = mix(vColor, vec3(1.0, 0.93, 0.86), pulse * 0.62);
-  a *= mix(1.0, 0.045, vDim);
+  d -= floor(d + 0.5);
+  float pulse = exp(-d * d * etroit) * uPulse;
+
+  float a = uBase * mix(1.0, 0.72, vConf) + pulse * eclat;
+  vec3 col = mix(vColor, vec3(1.0, 0.94, 0.88), pulse * blanc);
+
+  // arête appartenant au chemin tracé : toujours vive, quoi qu'il arrive
+  a = mix(a, max(a, 0.82), vHot);
+  col = mix(col, vec3(1.0, 0.86, 0.72), vHot * 0.5);
+
+  a *= mix(1.0, 0.07, vDim);
   if (a < 0.004) discard;
   gl_FragColor = vec4(col, a);
 }`;
@@ -114,18 +154,23 @@ void main() {
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 30000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// 1,5 suffit largement pour des points flous : au-delà on quadruple le nombre
+// de pixels a remplir sans gain visible sur un rendu additif.
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.setClearColor(0x000000, 0);
 document.body.appendChild(renderer.domElement);
 
 let DATA, NODES, LINKS, nodeGeo, linkGeo, nodeMat, linkMat, points, lines;
 let colorMode = 'r', hidden = new Set(), focusIdx = -1;
-let neighbours = null, adjacency = null;
+let neighbours = null, adjacency = null, colors = [];
+let pathNodes = null, pathLinks = null, armPath = false;
+let morph = null;   // { t, from, to } pendant une bascule de disposition
+let layout = 'p';
 
-const state = { pulse: 1, links: 1, inferred: 1, spin: 1, boost: 1 };
+const state = { pulse: 1, links: 1, inferred: 1, spin: 1 };
 
-// ── Contrôles caméra (maison : pas de dépendance, pas de surcoût) ──────────
+// ── Contrôles caméra (maison : pas de dépendance) ──────────────────────────
 const cam = { target: new THREE.Vector3(), radius: 2600, theta: 0.6, phi: 1.15, spin: 0.018 };
 let drag = null, idle = 0;
 
@@ -153,7 +198,6 @@ el.addEventListener('pointermove', e => {
   drag.moved += Math.abs(dx) + Math.abs(dy);
   idle = 0;
   if (drag.btn === 2 || e.shiftKey) {
-    // déplacement latéral dans le plan de la caméra
     const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
     const up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
     const k = cam.radius * 0.0013;
@@ -165,7 +209,10 @@ el.addEventListener('pointermove', e => {
   applyCamera();
 });
 addEventListener('pointerup', e => {
-  if (drag && drag.moved < 5 && drag.btn === 0) pick(e.clientX, e.clientY);
+  if (drag && drag.moved < 5) {
+    if (drag.btn === 0) pick(e.clientX, e.clientY);
+    else if (drag.btn === 2) { const i = nearest(e.clientX, e.clientY); if (i >= 0) copierCommande(i); }
+  }
   drag = null;
 });
 el.addEventListener('wheel', e => {
@@ -177,124 +224,51 @@ el.addEventListener('wheel', e => {
 
 // ── Sélection : projection écran, plus fiable qu'un raycast sur Points ─────
 const _v = new THREE.Vector3();
-function pick(cx, cy) {
-  if (!NODES) return;
+function nearest(cx, cy) {
+  if (!NODES) return -1;
   const r = renderer.domElement.getBoundingClientRect();
   const hw = r.width / 2, hh = r.height / 2;
   let best = -1, bestD = 26 * 26;
   camera.updateMatrixWorld();
   const vp = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const pos = nodeGeo.getAttribute('position');
   for (let i = 0; i < NODES.length; i++) {
-    const n = NODES[i];
-    if (hidden.has(groupKey(n))) continue;
-    _v.set(n.p[0], n.p[1], n.p[2]).applyMatrix4(vp);
+    if (hidden.has(groupKey(NODES[i]))) continue;
+    _v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(vp);
     if (_v.z < -1 || _v.z > 1) continue;
     const sx = (_v.x * hw) + hw, sy = (-_v.y * hh) + hh;
     const dx = sx - (cx - r.left), dy = sy - (cy - r.top);
     const d = dx * dx + dy * dy;
     if (d < bestD) { bestD = d; best = i; }
   }
-  if (best >= 0) select(best); else clearSelection();
+  return best;
 }
 
-function groupKey(n) { return colorMode === 'r' ? n.r : colorMode === 'c' ? n.c : n.t; }
-function groupList() { return colorMode === 'r' ? DATA.repos : colorMode === 'c' ? DATA.comms : DATA.types; }
-
-// ── Construction ───────────────────────────────────────────────────────────
-async function build() {
-  DATA = await (await fetch('data.json')).json();
-  NODES = DATA.nodes; LINKS = DATA.links;
-
-  document.getElementById('n-nodes').textContent = NODES.length.toLocaleString('fr-FR');
-  document.getElementById('n-links').textContent = LINKS.length.toLocaleString('fr-FR');
-
-  // adjacence pour le panneau et la mise en évidence
-  adjacency = Array.from({ length: NODES.length }, () => []);
-  for (let i = 0; i < LINKS.length; i++) {
-    const [s, t] = LINKS[i];
-    adjacency[s].push([t, i]);
-    adjacency[t].push([s, i]);
-  }
-
-  // centre et échelle de la scène
-  const box = new THREE.Box3();
-  for (const n of NODES) box.expandByPoint(new THREE.Vector3(n.p[0], n.p[1], n.p[2]));
-  box.getCenter(cam.target);
-  cam.radius = box.getSize(new THREE.Vector3()).length() * 0.40;
-
-  // ── nœuds ──
-  const N = NODES.length;
-  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-  const siz = new Float32Array(N), dim = new Float32Array(N);
-  nodeGeo = new THREE.BufferGeometry();
-  nodeGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  nodeGeo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
-  nodeGeo.setAttribute('aSize', new THREE.BufferAttribute(siz, 1));
-  nodeGeo.setAttribute('aDim', new THREE.BufferAttribute(dim, 1));
-  for (let i = 0; i < N; i++) {
-    const n = NODES[i];
-    pos[i * 3] = n.p[0]; pos[i * 3 + 1] = n.p[1]; pos[i * 3 + 2] = n.p[2];
-    siz[i] = 7 + Math.sqrt(n.d) * 7.4;
-  }
-  nodeGeo.computeBoundingSphere();
-
-  nodeMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uScale: { value: innerHeight * 0.55 },
-      uOpacity: { value: 1 },
-      uBoost: { value: 1 },
-    },
-    vertexShader: NODE_VERT, fragmentShader: NODE_FRAG,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  });
-  points = new THREE.Points(nodeGeo, nodeMat);
-  points.frustumCulled = false;
-  scene.add(points);
-
-  // ── arêtes ──
-  const L = LINKS.length;
-  const lp = new Float32Array(L * 6), lc = new Float32Array(L * 6);
-  const lt = new Float32Array(L * 2), lph = new Float32Array(L * 2), ld = new Float32Array(L * 2);
-  linkGeo = new THREE.BufferGeometry();
-  linkGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-  linkGeo.setAttribute('aColor', new THREE.BufferAttribute(lc, 3));
-  linkGeo.setAttribute('aT', new THREE.BufferAttribute(lt, 1));
-  linkGeo.setAttribute('aPhase', new THREE.BufferAttribute(lph, 1));
-  linkGeo.setAttribute('aDim', new THREE.BufferAttribute(ld, 1));
-  for (let i = 0; i < L; i++) {
-    const [s, t] = LINKS[i];
-    const a = NODES[s].p, b = NODES[t].p;
-    lp[i * 6] = a[0]; lp[i * 6 + 1] = a[1]; lp[i * 6 + 2] = a[2];
-    lp[i * 6 + 3] = b[0]; lp[i * 6 + 4] = b[1]; lp[i * 6 + 5] = b[2];
-    lt[i * 2] = 0; lt[i * 2 + 1] = 1;
-    const ph = (i * 0.6180339887) % 1;
-    lph[i * 2] = ph; lph[i * 2 + 1] = ph;
-  }
-  linkGeo.computeBoundingSphere();
-
-  linkMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 }, uPulse: { value: 1 }, uBase: { value: 0.14 },
-    },
-    vertexShader: LINK_VERT, fragmentShader: LINK_FRAG,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  });
-  lines = new THREE.LineSegments(linkGeo, linkMat);
-  lines.frustumCulled = false;
-  scene.add(lines);
-
-  recolor();
-  buildLegend();
-  applyCamera();
-  document.getElementById('boot').classList.add('gone');
-  setTimeout(() => document.getElementById('boot')?.remove(), 700);
+function pick(cx, cy) {
+  const i = nearest(cx, cy);
+  if (i < 0) { clearSelection(); return; }
+  if (armPath && focusIdx >= 0 && i !== focusIdx) { tracerChemin(focusIdx, i); return; }
+  select(i);
 }
 
-// ── Couleurs et filtres ────────────────────────────────────────────────────
-let colors = [];
+// ── Groupes et couleurs ────────────────────────────────────────────────────
+function ageBucket(a) {
+  if (a < 0) return AGES.length - 1;
+  for (let i = 0; i < AGES.length - 1; i++) if (a < AGES[i].max) return i;
+  return AGES.length - 2;
+}
+function groupKey(n) {
+  return colorMode === 'r' ? n.r : colorMode === 'c' ? n.c
+    : colorMode === 't' ? n.t : ageBucket(n.a);
+}
+function groupList() {
+  return colorMode === 'r' ? DATA.repos : colorMode === 'c' ? DATA.comms
+    : colorMode === 't' ? DATA.types : AGES.map(a => a.l);
+}
+
 function recolor() {
   const keys = groupList();
-  colors = palette(keys.length);
+  colors = colorMode === 'a' ? AGES.map(a => new THREE.Color(a.c)) : palette(keys.length);
   const col = nodeGeo.getAttribute('aColor');
   for (let i = 0; i < NODES.length; i++) {
     const c = colors[groupKey(NODES[i])] || colors[0];
@@ -308,7 +282,7 @@ function recolor() {
     const a = colors[groupKey(NODES[s])] || colors[0];
     const b = colors[groupKey(NODES[t])] || colors[0];
     lc.setXYZ(i * 2, a.r, a.g, a.b);
-    lc.setXYZ(i * 2 + 1, b.r, b.g, b.b);   // dégradé le long du fil
+    lc.setXYZ(i * 2 + 1, b.r, b.g, b.b);
   }
   lc.needsUpdate = true;
   applyDim();
@@ -316,11 +290,16 @@ function recolor() {
 
 function applyDim() {
   const nd = nodeGeo.getAttribute('aDim');
+  const nh = nodeGeo.getAttribute('aHot');
   const ld = linkGeo.getAttribute('aDim');
+  const lh = linkGeo.getAttribute('aHot');
+
   for (let i = 0; i < NODES.length; i++) {
     let d = hidden.has(groupKey(NODES[i])) ? 1 : 0;
-    if (!d && focusIdx >= 0 && i !== focusIdx && !neighbours.has(i)) d = 1;
+    if (!d && pathNodes) d = pathNodes.has(i) ? 0 : 1;
+    else if (!d && focusIdx >= 0 && i !== focusIdx && !neighbours.has(i)) d = 1;
     nd.setX(i, d);
+    nh.setX(i, pathNodes && pathNodes.has(i) ? 1 : 0);
   }
   for (let i = 0; i < LINKS.length; i++) {
     const [s, t, inf] = LINKS[i];
@@ -328,20 +307,29 @@ function applyDim() {
     if (!state.links) d = 1;
     else if (inf && !state.inferred) d = 1;
     else if (hidden.has(groupKey(NODES[s])) || hidden.has(groupKey(NODES[t]))) d = 1;
+    else if (pathLinks) d = pathLinks.has(i) ? 0 : 1;
     else if (focusIdx >= 0 && s !== focusIdx && t !== focusIdx) d = 1;
     ld.setX(i * 2, d); ld.setX(i * 2 + 1, d);
+    const hot = pathLinks && pathLinks.has(i) ? 1 : 0;
+    lh.setX(i * 2, hot); lh.setX(i * 2 + 1, hot);
   }
-  nd.needsUpdate = true; ld.needsUpdate = true;
+  nd.needsUpdate = true; nh.needsUpdate = true;
+  ld.needsUpdate = true; lh.needsUpdate = true;
 }
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function buildLegend() {
   const keys = groupList();
   const counts = new Array(keys.length).fill(0);
   for (const n of NODES) counts[groupKey(n)]++;
-  const order = keys.map((k, i) => i).sort((a, b) => counts[b] - counts[a]).slice(0, 60);
+  const order = colorMode === 'a'
+    ? keys.map((k, i) => i)
+    : keys.map((k, i) => i).sort((a, b) => counts[b] - counts[a]).slice(0, 60);
   const box = document.getElementById('legend');
   box.innerHTML = '';
   for (const i of order) {
+    if (colorMode === 'a' && !counts[i]) continue;
     const d = document.createElement('div');
     d.className = 'lg' + (hidden.has(i) ? ' off' : '');
     const c = colors[i];
@@ -356,11 +344,11 @@ function buildLegend() {
   }
 }
 
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
 // ── Panneau d'inspection ───────────────────────────────────────────────────
 function select(i) {
+  pathNodes = pathLinks = null; armPath = false;
   focusIdx = i;
+  majBoutonChemin();          // après focusIdx : c'est lui qui décide de l'affichage
   neighbours = new Set(adjacency[i].map(a => a[0]));
   applyDim();
 
@@ -368,11 +356,15 @@ function select(i) {
   document.getElementById('info').classList.add('show');
   document.getElementById('i-label').textContent = n.l;
   document.getElementById('i-file').textContent = n.f || '—';
+  const age = n.a < 0 ? 'date inconnue'
+    : n.a === 0 ? "modifié aujourd'hui"
+      : `modifié il y a ${n.a} j`;
   document.getElementById('i-tags').innerHTML =
     `<span class="tag grad">${esc(DATA.repos[n.r])}</span>` +
     `<span class="tag">${esc(DATA.types[n.t])}</span>` +
     `<span class="tag">${esc(DATA.comms[n.c])}</span>` +
-    `<span class="tag">${n.d} liens</span>`;
+    `<span class="tag">${n.d} liens</span>` +
+    `<span class="tag">${age}</span>`;
 
   const list = adjacency[i].slice().sort((a, b) => NODES[b[0]].d - NODES[a[0]].d);
   document.getElementById('i-n').textContent = `(${adjacency[i].length})`;
@@ -380,25 +372,30 @@ function select(i) {
   box.innerHTML = '';
   for (const [j, li] of list.slice(0, 80)) {
     const o = NODES[j];
-    const inf = LINKS[li][2];
     const row = document.createElement('div');
     row.className = 'cx';
     row.innerHTML = `<span class="ar">${LINKS[li][0] === i ? '→' : '←'}</span>
-      <span class="nm">${esc(o.l)}<br><span class="rl">${esc(o.f || DATA.comms[o.c])}${inf ? ' · inféré' : ''}</span></span>`;
-    row.onclick = () => { select(j); flyTo(j); };
+      <span class="nm">${esc(o.l)}<br><span class="rl">${esc(o.f || DATA.comms[o.c])}${LINKS[li][2] ? ' · inféré' : ''}</span></span>`;
+    // Viser un nœud précis dans la 3D est pénible ; quand le mode chemin est
+    // armé, la liste sert aussi de sélecteur d'arrivée.
+    row.onclick = () => {
+      if (armPath) tracerChemin(focusIdx, j);
+      else { select(j); flyTo(j); }
+    };
     box.appendChild(row);
   }
 }
 
 function clearSelection() {
-  focusIdx = -1; neighbours = null;
+  focusIdx = -1; neighbours = null; pathNodes = pathLinks = null; armPath = false;
+  majBoutonChemin();
   document.getElementById('info').classList.remove('show');
   applyDim();
 }
 
 function flyTo(i) {
-  const n = NODES[i];
-  const to = new THREE.Vector3(n.p[0], n.p[1], n.p[2]);
+  const pos = nodeGeo.getAttribute('position');
+  const to = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
   const from = cam.target.clone();
   const r0 = cam.radius, r1 = Math.max(180, Math.min(r0, 460));
   const t0 = performance.now();
@@ -412,6 +409,215 @@ function flyTo(i) {
   })();
 }
 
+// ── Chemin le plus court ───────────────────────────────────────────────────
+function tracerChemin(a, b) {
+  const prev = new Int32Array(NODES.length).fill(-1);
+  const viaLink = new Int32Array(NODES.length).fill(-1);
+  const vu = new Uint8Array(NODES.length);
+  const file = [a]; vu[a] = 1;
+  let trouve = false;
+  for (let h = 0; h < file.length && !trouve; h++) {
+    const cur = file[h];
+    for (const [next, li] of adjacency[cur]) {
+      if (vu[next]) continue;
+      vu[next] = 1; prev[next] = cur; viaLink[next] = li;
+      if (next === b) { trouve = true; break; }
+      file.push(next);
+    }
+  }
+  if (!trouve) { toast('Aucun chemin entre ces deux nœuds'); armPath = false; majBoutonChemin(); return; }
+
+  pathNodes = new Set(); pathLinks = new Set();
+  let cur = b;
+  while (cur !== -1) {
+    pathNodes.add(cur);
+    if (viaLink[cur] >= 0) pathLinks.add(viaLink[cur]);
+    cur = prev[cur];
+  }
+  armPath = false;
+  majBoutonChemin();
+  focusIdx = -1; neighbours = null;
+  applyDim();
+
+  // recadre sur l'ensemble du chemin
+  const pos = nodeGeo.getAttribute('position');
+  const box = new THREE.Box3();
+  for (const i of pathNodes) box.expandByPoint(new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i)));
+  box.getCenter(cam.target);
+  cam.radius = Math.max(340, box.getSize(new THREE.Vector3()).length() * 1.45);
+  applyCamera();
+
+  const ordre = [...pathNodes].reverse();
+  document.getElementById('info').classList.add('show');
+  document.getElementById('i-label').textContent = `Chemin — ${ordre.length - 1} saut${ordre.length > 2 ? 's' : ''}`;
+  document.getElementById('i-file').textContent = `${NODES[a].l} → ${NODES[b].l}`;
+  document.getElementById('i-tags').innerHTML = `<span class="tag grad">chemin le plus court</span>`;
+  document.getElementById('i-n').textContent = `(${ordre.length})`;
+  const bx = document.getElementById('i-cx');
+  bx.innerHTML = '';
+  ordre.forEach((i, k) => {
+    const n = NODES[i];
+    const row = document.createElement('div');
+    row.className = 'cx';
+    row.innerHTML = `<span class="ar">${k + 1}</span>
+      <span class="nm">${esc(n.l)}<br><span class="rl">${esc(n.f || DATA.comms[n.c])}</span></span>`;
+    row.onclick = () => flyTo(i);
+    bx.appendChild(row);
+  });
+}
+
+function majBoutonChemin() {
+  const b = document.getElementById('btn-path');
+  if (!b) return;
+  b.classList.toggle('armed', armPath);
+  b.textContent = armPath ? 'Clique le nœud d\'arrivée…' : 'Tracer un chemin depuis ici';
+  b.style.display = focusIdx >= 0 ? '' : 'none';
+}
+
+// ── Commande graphify dans le presse-papier ────────────────────────────────
+function copierCommande(i) {
+  const n = NODES[i];
+  const cmd = `graphify explain "${n.l.replace(/"/g, '\\"')}" --graph "$env:USERPROFILE\\.graphify\\global-graph.json"`;
+  navigator.clipboard?.writeText(cmd)
+    .then(() => toast('Commande copiée : graphify explain « ' + n.l.slice(0, 40) + ' »'))
+    .catch(() => toast('Copie impossible (presse-papier refusé)'));
+}
+
+let toastT = null;
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast'; t.className = 'glass';
+    document.getElementById('ui').appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── Bascule de disposition, par interpolation ──────────────────────────────
+function setLayout(next) {
+  if (next === layout || morph) return;
+  const pos = nodeGeo.getAttribute('position');
+  const from = new Float32Array(pos.array);
+  const to = new Float32Array(NODES.length * 3);
+  for (let i = 0; i < NODES.length; i++) {
+    const p = NODES[i][next];
+    to[i * 3] = p[0]; to[i * 3 + 1] = p[1]; to[i * 3 + 2] = p[2];
+  }
+  morph = { t: 0, from, to };
+  layout = next;
+}
+
+function appliquerMorph(dt) {
+  morph.t = Math.min(1, morph.t + dt / 1.1);
+  const e = morph.t < 0.5 ? 4 * morph.t ** 3 : 1 - Math.pow(-2 * morph.t + 2, 3) / 2;
+  const pos = nodeGeo.getAttribute('position');
+  const arr = pos.array;
+  for (let i = 0; i < arr.length; i++) arr[i] = morph.from[i] + (morph.to[i] - morph.from[i]) * e;
+  pos.needsUpdate = true;
+
+  const lp = linkGeo.getAttribute('position');
+  const la = lp.array;
+  for (let i = 0; i < LINKS.length; i++) {
+    const s = LINKS[i][0] * 3, t = LINKS[i][1] * 3;
+    la[i * 6] = arr[s]; la[i * 6 + 1] = arr[s + 1]; la[i * 6 + 2] = arr[s + 2];
+    la[i * 6 + 3] = arr[t]; la[i * 6 + 4] = arr[t + 1]; la[i * 6 + 5] = arr[t + 2];
+  }
+  lp.needsUpdate = true;
+  if (morph.t >= 1) { morph = null; nodeGeo.computeBoundingSphere(); linkGeo.computeBoundingSphere(); }
+}
+
+// ── Construction ───────────────────────────────────────────────────────────
+async function build() {
+  DATA = await (await fetch('data.json')).json();
+  NODES = DATA.nodes; LINKS = DATA.links;
+
+  document.getElementById('n-nodes').textContent = NODES.length.toLocaleString('fr-FR');
+  document.getElementById('n-links').textContent = LINKS.length.toLocaleString('fr-FR');
+
+  adjacency = Array.from({ length: NODES.length }, () => []);
+  for (let i = 0; i < LINKS.length; i++) {
+    adjacency[LINKS[i][0]].push([LINKS[i][1], i]);
+    adjacency[LINKS[i][1]].push([LINKS[i][0], i]);
+  }
+
+  const N = NODES.length;
+  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  const siz = new Float32Array(N), dim = new Float32Array(N), hot = new Float32Array(N);
+  nodeGeo = new THREE.BufferGeometry();
+  nodeGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  nodeGeo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  nodeGeo.setAttribute('aSize', new THREE.BufferAttribute(siz, 1));
+  nodeGeo.setAttribute('aDim', new THREE.BufferAttribute(dim, 1));
+  nodeGeo.setAttribute('aHot', new THREE.BufferAttribute(hot, 1));
+  for (let i = 0; i < N; i++) {
+    const n = NODES[i];
+    pos[i * 3] = n.p[0]; pos[i * 3 + 1] = n.p[1]; pos[i * 3 + 2] = n.p[2];
+    siz[i] = 7 + Math.sqrt(n.d) * 7.4;
+  }
+  nodeGeo.computeBoundingSphere();
+
+  const box = new THREE.Box3().setFromBufferAttribute(nodeGeo.getAttribute('position'));
+  box.getCenter(cam.target);
+  cam.radius = box.getSize(new THREE.Vector3()).length() * 0.40;
+
+  nodeMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uScale: { value: innerHeight * 0.55 }, uOpacity: { value: 1 },
+      uBoost: { value: 1 }, uMaxSize: { value: 34 },
+    },
+    vertexShader: NODE_VERT, fragmentShader: NODE_FRAG,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  points = new THREE.Points(nodeGeo, nodeMat);
+  points.frustumCulled = false;
+  scene.add(points);
+
+  const L = LINKS.length;
+  const lp = new Float32Array(L * 6), lc = new Float32Array(L * 6);
+  const lt = new Float32Array(L * 2), lph = new Float32Array(L * 2);
+  const ld = new Float32Array(L * 2), lcf = new Float32Array(L * 2), lh = new Float32Array(L * 2);
+  linkGeo = new THREE.BufferGeometry();
+  linkGeo.setAttribute('position', new THREE.BufferAttribute(lp, 3));
+  linkGeo.setAttribute('aColor', new THREE.BufferAttribute(lc, 3));
+  linkGeo.setAttribute('aT', new THREE.BufferAttribute(lt, 1));
+  linkGeo.setAttribute('aPhase', new THREE.BufferAttribute(lph, 1));
+  linkGeo.setAttribute('aDim', new THREE.BufferAttribute(ld, 1));
+  linkGeo.setAttribute('aConf', new THREE.BufferAttribute(lcf, 1));
+  linkGeo.setAttribute('aHot', new THREE.BufferAttribute(lh, 1));
+  for (let i = 0; i < L; i++) {
+    const [s, t, inf] = LINKS[i];
+    const a = NODES[s].p, b = NODES[t].p;
+    lp[i * 6] = a[0]; lp[i * 6 + 1] = a[1]; lp[i * 6 + 2] = a[2];
+    lp[i * 6 + 3] = b[0]; lp[i * 6 + 4] = b[1]; lp[i * 6 + 5] = b[2];
+    lt[i * 2] = 0; lt[i * 2 + 1] = 1;
+    const ph = (i * 0.6180339887) % 1;
+    lph[i * 2] = ph; lph[i * 2 + 1] = ph;
+    lcf[i * 2] = inf; lcf[i * 2 + 1] = inf;
+  }
+  linkGeo.computeBoundingSphere();
+
+  linkMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uPulse: { value: 1 }, uBase: { value: 0.14 } },
+    vertexShader: LINK_VERT, fragmentShader: LINK_FRAG,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  lines = new THREE.LineSegments(linkGeo, linkMat);
+  lines.frustumCulled = false;
+  scene.add(lines);
+
+  recolor();
+  buildLegend();
+  majBoutonChemin();
+  appliquerQualite('equilibre');
+  applyCamera();
+  document.getElementById('boot').classList.add('gone');
+  setTimeout(() => document.getElementById('boot')?.remove(), 700);
+}
+
 // ── Interface ──────────────────────────────────────────────────────────────
 document.getElementById('close').onclick = clearSelection;
 addEventListener('keydown', e => { if (e.key === 'Escape') clearSelection(); });
@@ -419,10 +625,15 @@ addEventListener('keydown', e => { if (e.key === 'Escape') clearSelection(); });
 document.getElementById('mode').onchange = e => {
   colorMode = e.target.value; hidden.clear(); recolor(); buildLegend();
 };
+document.getElementById('layout').onchange = e => setLayout(e.target.value);
 
-// Cherche dans le libellé ET le nom de fichier : le brandbook s'appelle
-// « Brand Book Bony… » côté nœud mais brandbook.pdf côté fichier, et personne
-// ne devine laquelle des deux graphies taper.
+document.getElementById('btn-path').onclick = () => {
+  if (focusIdx < 0) return;
+  armPath = !armPath;
+  majBoutonChemin();
+  if (armPath) toast('Clique maintenant le nœud d\'arrivée');
+};
+
 document.getElementById('q').oninput = e => {
   const q = e.target.value.trim().toLowerCase();
   if (q.length < 2) return;
@@ -431,30 +642,60 @@ document.getElementById('q').oninput = e => {
     const n = NODES[i];
     const pl = n.l.toLowerCase().indexOf(q);
     const pf = (n.f || '').toLowerCase().indexOf(q);
-    // un libellé qui matche prime sur un nom de fichier, et un match en tête
-    // de chaîne prime sur un match au milieu
     let score = 1e9;
-    if (pl >= 0) score = pl;
-    else if (pf >= 0) score = 100 + pf;
+    if (pl >= 0) score = pl; else if (pf >= 0) score = 100 + pf;
     if (score < bestScore || (score === bestScore && best >= 0 && n.d > NODES[best].d)) {
       bestScore = score; best = i;
     }
   }
-  if (best >= 0) { select(best); flyTo(best); }
+  if (best < 0) return;
+  // Mode chemin armé : la recherche désigne l'arrivée. C'est le cas d'usage
+  // réel — « de useAuth à prisma » — sans avoir à viser un point dans la 3D.
+  if (armPath && focusIdx >= 0 && best !== focusIdx) tracerChemin(focusIdx, best);
+  else { select(best); flyTo(best); }
 };
 
 function toggle(id, key, after) {
-  const el = document.getElementById(id);
-  el.onclick = () => {
+  const b = document.getElementById(id);
+  b.onclick = () => {
     state[key] = state[key] ? 0 : 1;
-    el.classList.toggle('on', !!state[key]);
+    b.classList.toggle('on', !!state[key]);
     after && after();
   };
 }
 toggle('sw-pulse', 'pulse');
-toggle('sw-links', 'links', applyDim);
+// Masquer les liens doit VRAIMENT cesser de les dessiner. Les atténuer via aDim
+// laissait le fragment shader tourner sur chacun d'eux : aucun gain.
+toggle('sw-links', 'links', () => { lines.visible = !!state.links; applyDim(); });
 toggle('sw-inf', 'inferred', applyDim);
 toggle('sw-spin', 'spin');
+
+// ── Qualité ────────────────────────────────────────────────────────────────
+// Sur un GPU intégré, le coût dominant est le remplissage : des milliers de
+// halos translucides additifs, sans rejet de profondeur possible. Les trois
+// niveaux jouent sur la résolution, la taille des halos et l'impulsion.
+const QUALITES = {
+  haute:     { dpr: 1.5, taille: 38, pulse: 1, base: 0.14, flou: '22px' },
+  equilibre: { dpr: 1.0, taille: 30, pulse: 1, base: 0.12, flou: '16px' },
+  fluide:    { dpr: 1.0, taille: 22, pulse: 0, base: 0.20, flou: '10px' },
+};
+let qualite = 'equilibre';
+
+function appliquerQualite(q) {
+  qualite = q;
+  const k = QUALITES[q];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, k.dpr));
+  renderer.setSize(innerWidth, innerHeight);
+  nodeMat.uniforms.uMaxSize.value = k.taille;
+  linkMat.uniforms.uBase.value = k.base;
+  state.pulse = k.pulse;
+  document.getElementById('sw-pulse').classList.toggle('on', !!k.pulse);
+  document.documentElement.style.setProperty('--glass-blur', k.flou);
+  const sel = document.getElementById('qualite');
+  if (sel && sel.value !== q) sel.value = q;
+}
+
+document.getElementById('qualite').onchange = e => { autoQualite = false; appliquerQualite(e.target.value); };
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
@@ -464,42 +705,55 @@ addEventListener('resize', () => {
 });
 
 // ── Boucle ─────────────────────────────────────────────────────────────────
-let last = performance.now(), fpsAcc = 0, fpsN = 0, guard = 0;
+let last = performance.now(), fpsAcc = 0, fpsN = 0;
+let autoQualite = true;
+const echantillons = [];
 const fpsEl = document.getElementById('fps');
 
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min((now - last) / 1000, 0.1); last = now;
 
+  if (morph) appliquerMorph(dt);
+
   if (linkMat) {
     linkMat.uniforms.uTime.value += dt;
-    // l'impulsion s'éteint en douceur plutôt que de disparaître d'un coup
     const target = state.pulse && state.links ? 1 : 0;
     const u = linkMat.uniforms.uPulse;
     u.value += (target - u.value) * Math.min(1, dt * 6);
   }
 
-  if (state.spin && !drag) {
+  if (state.spin && !drag && !morph) {
     idle += dt;
     if (idle > 1.2) { cam.theta += cam.spin * dt; applyCamera(); }
   }
 
   renderer.render(scene, camera);
 
-  // ── garde-fou performance : on dégrade avant que ça rame ──
   fpsAcc += dt; fpsN++;
   if (fpsAcc >= 0.5) {
     const fps = fpsN / fpsAcc;
     fpsEl.textContent = Math.round(fps) + ' i/s';
     fpsEl.style.color = fps < 30 ? '#f75632' : fps < 50 ? '#c1348c' : '';
-    if (fps < 26 && guard < 2) {
-      guard++;
-      if (guard === 1) {
-        renderer.setPixelRatio(1);
-        document.documentElement.style.setProperty('--glass-blur', '11px');
-      } else {
-        if (nodeMat) nodeMat.uniforms.uBoost.value = 0.78;
-        if (linkMat) linkMat.uniforms.uBase.value = 0.03;
+    // Réglage automatique : on descend d'un cran tant que ça n'est pas fluide,
+    // et on le dit. L'utilisateur reprend la main dès qu'il touche au sélecteur.
+    if (autoQualite && !morph) {
+      echantillons.push(fps);
+      if (echantillons.length >= 4) {
+        const median = echantillons.slice().sort((a, b) => a - b)[2];
+        echantillons.length = 0;
+        if (median < 40 && qualite === 'haute') {
+          appliquerQualite('equilibre');
+          toast('Qualité ajustée : équilibrée (' + Math.round(median) + ' i/s)');
+        } else if (median < 32 && qualite === 'equilibre') {
+          appliquerQualite('fluide');
+          toast('Qualité ajustée : fluide — impulsions coupées (' + Math.round(median) + ' i/s)');
+        } else if (median > 56 && qualite === 'equilibre') {
+          appliquerQualite('haute');
+          autoQualite = false;
+        } else if (median >= 32) {
+          autoQualite = false;   // stable : on arrête de tripoter
+        }
       }
     }
     fpsAcc = 0; fpsN = 0;

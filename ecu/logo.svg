@@ -2,78 +2,98 @@
   <title id="t">ECU — Engine Control Unit, réseau de connaissance Bony</title>
   <!--
     ECU · Engine Control Unit
-    Le calculateur : un boîtier de commande dont le cœur est la grille en H
-    d'une boîte de vitesses — reprise directe de la marque gearbox — reliée
-    à ses broches comme un neurone à ses synapses.
+    Un circuit imprimé : le die central, ses pistes coudées, ses vias et ses
+    broches. Les pistes partent du cœur vers l'extérieur comme les synapses
+    du réseau qu'elles représentent.
     Dégradé charte Bony : #f75632 (Pantone 172 C) -> #8f12ab (Pantone 2602 C).
   -->
   <defs>
-    <linearGradient id="bony" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bony" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#f75632"/>
-      <stop offset=".52" stop-color="#c1348c"/>
+      <stop offset=".5" stop-color="#c1348c"/>
       <stop offset="1" stop-color="#8f12ab"/>
     </linearGradient>
-    <linearGradient id="bonySoft" x1="96" y1="128" x2="416" y2="384" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f75632" stop-opacity=".55"/>
-      <stop offset="1" stop-color="#8f12ab" stop-opacity=".55"/>
+    <linearGradient id="trace" x1="128" y1="128" x2="384" y2="384" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".92"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity=".92"/>
     </linearGradient>
-    <radialGradient id="halo" cx="256" cy="248" r="200" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f75632" stop-opacity=".30"/>
-      <stop offset=".55" stop-color="#8f12ab" stop-opacity=".16"/>
+    <linearGradient id="pin" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity=".5"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="256" cy="256" r="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".26"/>
+      <stop offset=".6" stop-color="#8f12ab" stop-opacity=".14"/>
       <stop offset="1" stop-color="#8f12ab" stop-opacity="0"/>
     </radialGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="7" result="b"/>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="5.5" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <!-- plaque : noir charte, coins arrondis -->
   <rect x="0" y="0" width="512" height="512" rx="112" fill="#0a0a12"/>
-  <circle cx="256" cy="248" r="200" fill="url(#halo)"/>
+  <circle cx="256" cy="256" r="196" fill="url(#halo)"/>
 
   <!-- broches du boîtier -->
-  <g fill="url(#bonySoft)">
-    <rect x="150" y="74"  width="17" height="34" rx="8"/>
-    <rect x="203" y="74"  width="17" height="34" rx="8"/>
-    <rect x="292" y="74"  width="17" height="34" rx="8"/>
-    <rect x="345" y="74"  width="17" height="34" rx="8"/>
-    <rect x="150" y="404" width="17" height="34" rx="8"/>
-    <rect x="203" y="404" width="17" height="34" rx="8"/>
-    <rect x="292" y="404" width="17" height="34" rx="8"/>
-    <rect x="345" y="404" width="17" height="34" rx="8"/>
-    <rect x="74"  y="150" width="34" height="17" rx="8"/>
-    <rect x="74"  y="203" width="34" height="17" rx="8"/>
-    <rect x="74"  y="292" width="34" height="17" rx="8"/>
-    <rect x="74"  y="345" width="34" height="17" rx="8"/>
-    <rect x="404" y="150" width="34" height="17" rx="8"/>
-    <rect x="404" y="203" width="34" height="17" rx="8"/>
-    <rect x="404" y="292" width="34" height="17" rx="8"/>
-    <rect x="404" y="345" width="34" height="17" rx="8"/>
+  <g fill="url(#pin)">
+    <rect x="156" y="70" width="16" height="32" rx="7"/>
+    <rect x="208" y="70" width="16" height="32" rx="7"/>
+    <rect x="288" y="70" width="16" height="32" rx="7"/>
+    <rect x="340" y="70" width="16" height="32" rx="7"/>
+    <rect x="156" y="410" width="16" height="32" rx="7"/>
+    <rect x="208" y="410" width="16" height="32" rx="7"/>
+    <rect x="288" y="410" width="16" height="32" rx="7"/>
+    <rect x="340" y="410" width="16" height="32" rx="7"/>
+    <rect x="70" y="156" width="32" height="16" rx="7"/>
+    <rect x="70" y="208" width="32" height="16" rx="7"/>
+    <rect x="70" y="288" width="32" height="16" rx="7"/>
+    <rect x="70" y="340" width="32" height="16" rx="7"/>
+    <rect x="410" y="156" width="32" height="16" rx="7"/>
+    <rect x="410" y="208" width="32" height="16" rx="7"/>
+    <rect x="410" y="288" width="32" height="16" rx="7"/>
+    <rect x="410" y="340" width="32" height="16" rx="7"/>
   </g>
 
-  <!-- die : le corps du calculateur -->
-  <rect x="108" y="108" width="296" height="296" rx="52"
-        fill="none" stroke="url(#bony)" stroke-width="11" opacity=".92"/>
-  <rect x="108" y="108" width="296" height="296" rx="52" fill="#0d0d17" opacity=".7"/>
+  <!-- contour du boîtier -->
+  <rect x="102" y="102" width="308" height="308" rx="46"
+        fill="#0c0c16" stroke="url(#bony)" stroke-width="10" opacity=".95"/>
 
-  <!-- grille en H de boîte de vitesses = le cœur -->
-  <g stroke="url(#bony)" stroke-width="20" stroke-linecap="round" fill="none" filter="url(#glow)">
-    <!-- barre de grille -->
-    <path d="M176 256 H336"/>
-    <!-- rails -->
-    <path d="M176 196 V316"/>
-    <path d="M256 196 V316"/>
-    <path d="M336 196 V316"/>
+  <!-- pistes : coudes à 90° et 45°, du die vers les broches -->
+  <g fill="none" stroke="url(#trace)" stroke-width="11"
+     stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+    <!-- haut -->
+    <path d="M216 214 V170 H164"/>
+    <path d="M256 208 V138"/>
+    <path d="M296 214 V170 H348"/>
+    <!-- bas -->
+    <path d="M216 298 V342 H164"/>
+    <path d="M256 304 V374"/>
+    <path d="M296 298 V342 H348"/>
+    <!-- gauche -->
+    <path d="M214 236 H150 L128 258"/>
+    <path d="M208 276 H138"/>
+    <!-- droite -->
+    <path d="M298 236 H362 L384 258"/>
+    <path d="M304 276 H374"/>
   </g>
-  <!-- pommeaux : les nœuds du réseau -->
+
+  <!-- vias : les nœuds du réseau posés sur les pistes -->
   <g fill="url(#bony)" filter="url(#glow)">
-    <circle cx="176" cy="196" r="21"/>
-    <circle cx="336" cy="196" r="21"/>
-    <circle cx="176" cy="316" r="21"/>
-    <circle cx="336" cy="316" r="21"/>
-    <circle cx="256" cy="196" r="15"/>
-    <circle cx="256" cy="316" r="15"/>
+    <circle cx="164" cy="170" r="14"/>
+    <circle cx="348" cy="170" r="14"/>
+    <circle cx="164" cy="342" r="14"/>
+    <circle cx="348" cy="342" r="14"/>
+    <circle cx="256" cy="138" r="12"/>
+    <circle cx="256" cy="374" r="12"/>
+    <circle cx="128" cy="258" r="11"/>
+    <circle cx="384" cy="258" r="11"/>
+    <circle cx="138" cy="276" r="10"/>
+    <circle cx="374" cy="276" r="10"/>
   </g>
-  <circle cx="256" cy="256" r="12" fill="#0a0a12" stroke="url(#bony)" stroke-width="7"/>
+
+  <!-- le die : cœur du calculateur -->
+  <rect x="206" y="206" width="100" height="100" rx="20"
+        fill="#0a0a12" stroke="url(#bony)" stroke-width="12"/>
+  <rect x="230" y="230" width="52" height="52" rx="11" fill="url(#bony)" filter="url(#glow)"/>
 </svg>
