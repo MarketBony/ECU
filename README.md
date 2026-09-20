@@ -1,33 +1,43 @@
-# graphify-kb — réseau de connaissance MarketBony
+# graphify-kb — réseau de connaissance Bony
 
 Graphe de connaissance unifié des projets du groupe Bony auto-mobile, construit avec
 [Graphify](https://github.com/Graphify-Labs/graphify) (AST tree-sitter, local, déterministe).
 
 > ⚠️ **Dépôt privé obligatoire.** Ce graphe expose la structure de code privé
-> (`gearbox`, `GRID`, `Forum-2026`, `clutch-press-review`).
+> (`gearbox`, `GRID`, `Forum-2026`).
 
 ## Contenu
 
 | Fichier | Rôle |
 |---|---|
-| `global-graph.json` | Le graphe unifié des 4 dépôts — c'est lui qu'on interroge |
-| `graph.html` | Carte interactive, à ouvrir dans un navigateur (aucun serveur requis) |
-| `rebuild.ps1` | Reconstruit tout de zéro sur n'importe quelle machine Windows |
+| `global-graph.json` | Le graphe unifié — c'est lui qu'on interroge |
+| `carte-3d.html` | **Carte 3D interactive** — raccourci « Réseau MarketBony » sur le Bureau |
+| `graph.html` | Carte 2D d'origine de graphify |
+| `projets.ps1` | La liste des projets branchés — **le seul fichier à éditer** |
+| `carte.ps1` | Rafraîchit le code puis ouvre la carte 3D |
+| `nouveau-projet.ps1` | Branche un nouveau projet Bony sur le réseau |
+| `rebuild.ps1` | Reconstruit tout depuis les dossiers de travail |
 
 ## État au 20/09/2026
 
-| Dépôt | Nœuds | Arêtes | Communautés |
-|---|---:|---:|---:|
-| gearbox | 1 653 | 3 749 | 100 |
-| GRID | 1 146 | 2 168 | 83 |
-| Forum-2026 | 558 | 845 | 77 |
-| clutch-press-review | 64 | 88 | 10 |
-| **Global** | **3 425** | **6 844** | — |
+| Projet | Dossier de travail | Nœuds |
+|---|---|---:|
+| gearbox | `Documents\gearbox3backup` | 1 638 |
+| GRID | `Documents\RELTEL` | 1 434 |
+| Forum-2026 | `Documents\APP FORUM` | 565 |
+| **Global** | — | **3 663 nœuds, 6 973 arêtes** |
 
-Les 4 dépôts ont la passe **code + documents**. 273 communautés nommées.
+Les 3 projets ont la passe **code + documents**.
+`clutch-press-review` a été retiré du réseau (projet obsolète).
 
-Réduction mesurée : **16,6× moins de tokens par question** (`graphify benchmark`),
-et jusqu'à **103×** sur les questions d'architecture.
+Réduction mesurée : **17,5× moins de tokens par question** (`graphify benchmark`),
+et jusqu'à **86×** sur les questions d'architecture.
+
+## Où vivent les index
+
+Dans les **dossiers de travail eux-mêmes** (`<projet>/graphify-out/`), pas dans des
+clones séparés. C'est précisément ce qui rend la mise à jour automatique : le hook
+git du dépôt où tu travailles réellement régénère son propre index.
 
 ## Usage quotidien
 
@@ -41,37 +51,58 @@ graphify god-nodes --graph $G --top 15
 graphify affected "DataService" --graph $G     # ce qui casse si je touche à ça
 ```
 
-Dans Claude Code, la skill est installée : `/graphify query "..."`.
+Dans Claude Code, la skill est installée globalement : `/graphify query "..."`
+fonctionne dans n'importe quelle session, dans n'importe quel dossier.
 
-## Reconstruire
+## Brancher un nouveau projet Bony
 
 ```powershell
-.\rebuild.ps1              # code seul — 0 token
-.\rebuild.ps1 -Docs        # + passe sémantique sur docs/PDF (clé API requise)
+.\nouveau-projet.ps1 "C:\Users\Operateur\Documents\MON-PROJET"
 ```
+
+Indexe le code (gratuit), installe les hooks, enregistre le projet et l'ajoute à
+`projets.ps1`. Ensuite chaque commit met le réseau à jour tout seul.
+
+Pour y ajouter aussi les documents (README, CLAUDE.md, PDF, logos) : ouvrir Claude
+Code dans le dossier et taper `/graphify .` — ça coûte des tokens, une seule fois.
 
 ## Mise à jour automatique
 
-Des hooks git `post-commit` et `post-checkout` sont installés dans chaque clone :
-le graphe du dépôt se régénère tout seul à chaque commit et à chaque changement de branche.
+| | Déclencheur | Coût |
+|---|---|---|
+| **Code** | hook `post-commit` / `post-checkout` | gratuit, automatique |
+| **Documents** | `/graphify .` dans Claude Code | tokens, seulement les fichiers modifiés |
 
-Après un `git pull`, lancer `graphify update <dépôt>` (aucun LLM, instantané).
+La reconstruction se lance détachée : `git commit` rend la main immédiatement.
+Journal dans `~/.cache/graphify-rebuild.log`.
 
-## Passe sémantique — terminée sur les 4 dépôts
+Après un `git pull`, lancer `graphify update <dossier>` (aucun LLM, instantané),
+ou simplement le raccourci du Bureau qui le fait pour tous les projets.
 
-48 fichiers non-code extraits (docs, workflows, PDF, logos) via le modèle de
-l'assistant Claude Code, sans clé API.
+## Passe sémantique — faite
 
-| Dépôt | Fichiers | Coût |
+58 fichiers non-code extraits (docs, workflows, `brandbook.pdf`, logos) via le
+modèle de l'assistant Claude Code, sans clé API.
+
+| Projet | Fichiers | Coût |
 |---|---:|---:|
 | gearbox | 24 | 554 662 |
 | GRID | 19 | 365 030 |
 | Forum-2026 | 10 | 231 123 |
-| clutch-press-review | 5 | 142 580 |
+| clutch-press-review (retiré) | 5 | 142 580 |
 | **Total** | **58** | **1 293 395** |
 
-Coût unique : le cache ne relit que les fichiers modifiés. La passe code, elle,
-reste gratuite et se régénère seule à chaque commit.
+Coût unique : le cache (`<projet>/graphify-out/cache/`) ne fait relire que les
+fichiers modifiés.
 
-> La clé Gemini n'a pas pu servir : le compte Google est restreint
-> (403 PERMISSION_DENIED sur toute génération, création de clé API refusée).
+> La clé Gemini n'a pas pu servir : le compte Google `marketbony@gmail.com` est
+> restreint (403 PERMISSION_DENIED sur toute génération, création de clé refusée).
+> Inutile de réessayer par API — la passe passe par le modèle de l'assistant.
+
+## Pièges connus sur cette machine
+
+- **`.html` est associé à Internet Explorer**, qui n'existe plus. `Start-Process`
+  sur un fichier HTML n'ouvre rien : `carte.ps1` résout Chrome/Edge/Firefox
+  explicitement.
+- L'extraction AST bascule en séquentiel sous Windows (garde `__main__` du
+  multiprocessing) — plus lent, sans conséquence sur le résultat.
