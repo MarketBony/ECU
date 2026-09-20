@@ -1,5 +1,5 @@
-# Regenere la carte 3D du reseau et l'ouvre dans le navigateur.
-#   .\carte.ps1            rafraichit la partie code puis ouvre la carte
+# Regenere la carte 3D du reseau Bony et l'ouvre dans le navigateur.
+#   .\carte.ps1            rafraichit la partie code de chaque projet puis ouvre la carte
 #   .\carte.ps1 -Vite      ouvre la carte telle quelle, sans rafraichir
 
 param([switch]$Vite)
@@ -13,13 +13,15 @@ $Py    = Join-Path $env:APPDATA 'uv\tools\graphifyy\Scripts\python.exe'
 $Glob  = Join-Path $env:USERPROFILE '.graphify\global-graph.json'
 $Carte = Join-Path $Kb 'carte-3d.html'
 
+. (Join-Path $Kb 'projets.ps1')
+
 function Fin($code) {
     if ($code -ne 0) { Write-Host ''; Read-Host '  Une erreur est survenue. Entree pour fermer' }
     exit $code
 }
 
-# Resout un vrai navigateur. L'association .html de cette machine pointe vers
-# Internet Explorer, qui n'existe plus : Start-Process sur le fichier ne fait rien.
+# L'association .html de cette machine pointe vers Internet Explorer, qui n'existe
+# plus : Start-Process sur le fichier n'ouvre rien. On resout un vrai navigateur.
 function Get-Navigateur {
     $c = @(
         "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
@@ -34,8 +36,8 @@ function Get-Navigateur {
 }
 
 Write-Host ''
-Write-Host '  Reseau de connaissance MarketBony' -ForegroundColor Cyan
-Write-Host '  ---------------------------------' -ForegroundColor DarkGray
+Write-Host '  Reseau de connaissance Bony' -ForegroundColor Cyan
+Write-Host '  ---------------------------' -ForegroundColor DarkGray
 
 if (-not (Test-Path $Glob)) {
     Write-Host '  Graphe global introuvable. Lance d abord rebuild.ps1' -ForegroundColor Red
@@ -43,15 +45,16 @@ if (-not (Test-Path $Glob)) {
 }
 
 if (-not $Vite) {
-    $repos = Get-ChildItem (Join-Path $Root 'repos') -Directory -ErrorAction SilentlyContinue
-    foreach ($r in $repos) {
-        Write-Host ("  maj  {0,-22}" -f $r.Name) -NoNewline
-        graphify update $r.FullName *>$null
-        if ($LASTEXITCODE -eq 0) {
-            graphify global add (Join-Path $r.FullName 'graphify-out\graph.json') --as $r.Name *>$null
+    foreach ($p in $global:ProjetsBony) {
+        Write-Host ("  maj  {0,-14}" -f $p.Tag) -NoNewline
+        if (-not (Test-Path $p.Chemin)) { Write-Host 'dossier absent' -ForegroundColor Red; continue }
+        graphify update $p.Chemin *>$null
+        $g = Join-Path $p.Chemin 'graphify-out\graph.json'
+        if (Test-Path $g) {
+            graphify global add $g --as $p.Tag *>$null
             Write-Host 'ok' -ForegroundColor Green
         } else {
-            Write-Host 'inchange' -ForegroundColor DarkYellow
+            Write-Host 'pas encore indexe' -ForegroundColor DarkYellow
         }
     }
     Copy-Item $Glob (Join-Path $Kb 'global-graph.json') -Force
