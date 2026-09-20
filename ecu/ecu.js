@@ -769,17 +769,23 @@ function construireEtiquettes() {
   if (vueComm) {
     const C = DATA.commNodes;
     topIdx = C.map((c, i) => i).sort((a, b) => C[b].n - C[a].n).slice(0, COMBIEN);
-    topIdx.forEach(i => ajouterEtiquette(box, C[i].l));
+    topIdx.forEach(i => ajouterEtiquette(box, DATA.repos[C[i].r], C[i].l));
   } else {
     topIdx = NODES.map((n, i) => i).sort((a, b) => (NODES[b].w ?? 0) - (NODES[a].w ?? 0)).slice(0, COMBIEN);
-    topIdx.forEach(i => ajouterEtiquette(box, NODES[i].l));
+    topIdx.forEach(i => ajouterEtiquette(box, DATA.repos[NODES[i].r], NODES[i].l));
   }
 }
 
-function ajouterEtiquette(box, texte) {
+// Deux niveaux : le PROJET en gros, le fichier en dessous. Un nom de fichier
+// seul — « 10_garages.sql » — ne dit rien tant qu'on ignore d'où il sort.
+function ajouterEtiquette(box, projet, detail) {
   const d = document.createElement('div');
   d.className = 'etiq';
-  d.textContent = texte;
+  const p = document.createElement('b');
+  p.textContent = projet;
+  const s = document.createElement('span');
+  s.textContent = detail;
+  d.append(p, s);
   box.appendChild(d);
   etiquettes.push(d);
 }

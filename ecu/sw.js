@@ -2,7 +2,7 @@
  * Tout est servi depuis le cache : l'application fonctionne hors-ligne, et le
  * réseau n'est sollicité que pour rafraîchir data.json en arrière-plan.
  */
-const CACHE = 'ecu-v5';
+const CACHE = 'ecu-v6';
 const COQUILLE = [
   './',
   './index.html',
