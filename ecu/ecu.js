@@ -172,7 +172,31 @@ const state = { pulse: 1, links: 1, inferred: 1, spin: 1 };
 
 // ── Contrôles caméra (maison : pas de dépendance) ──────────────────────────
 const cam = { target: new THREE.Vector3(), radius: 2600, theta: 0.6, phi: 1.15, spin: 0.018 };
+const maison = { target: new THREE.Vector3(), radius: 2600, theta: 0.6, phi: 1.15 };
 let drag = null, idle = 0;
+
+/** Ramène la caméra au cadrage d'origine, en douceur. */
+function recentrer() {
+  pathNodes = pathLinks = null;
+  const t0 = performance.now();
+  const from = cam.target.clone();
+  const r0 = cam.radius, th0 = cam.theta, ph0 = cam.phi;
+  // angle le plus court : sans ça, revenir peut faire trois tours
+  let dTheta = (maison.theta - th0) % (Math.PI * 2);
+  if (dTheta > Math.PI) dTheta -= Math.PI * 2;
+  if (dTheta < -Math.PI) dTheta += Math.PI * 2;
+  (function pas() {
+    const k = Math.min(1, (performance.now() - t0) / 850);
+    const e = k < 0.5 ? 4 * k ** 3 : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    cam.target.lerpVectors(from, maison.target, e);
+    cam.radius = r0 + (maison.radius - r0) * e;
+    cam.theta = th0 + dTheta * e;
+    cam.phi = ph0 + (maison.phi - ph0) * e;
+    applyCamera();
+    if (k < 1) requestAnimationFrame(pas);
+  })();
+  applyDim();
+}
 
 function applyCamera() {
   const sp = Math.max(0.05, Math.min(Math.PI - 0.05, cam.phi));
@@ -317,6 +341,11 @@ function applyDim() {
   ld.needsUpdate = true; lh.needsUpdate = true;
 }
 
+/** Taille de fichier lisible : 12,4 Ko plutôt que 12698. */
+const poids = o => o < 1024 ? `${o} o`
+  : o < 1048576 ? `${(o / 1024).toFixed(1).replace('.', ',')} Ko`
+    : `${(o / 1048576).toFixed(1).replace('.', ',')} Mo`;
+
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function buildLegend() {
@@ -364,7 +393,8 @@ function select(i) {
     `<span class="tag">${esc(DATA.types[n.t])}</span>` +
     `<span class="tag">${esc(DATA.comms[n.c])}</span>` +
     `<span class="tag">${n.d} liens</span>` +
-    `<span class="tag">${age}</span>`;
+    `<span class="tag">${age}</span>` +
+    (n.o ? `<span class="tag">${poids(n.o)}</span>` : '');
 
   const list = adjacency[i].slice().sort((a, b) => NODES[b[0]].d - NODES[a[0]].d);
   document.getElementById('i-n').textContent = `(${adjacency[i].length})`;
@@ -556,13 +586,20 @@ async function build() {
   for (let i = 0; i < N; i++) {
     const n = NODES[i];
     pos[i * 3] = n.p[0]; pos[i * 3 + 1] = n.p[1]; pos[i * 3 + 2] = n.p[2];
-    siz[i] = 7 + Math.sqrt(n.d) * 7.4;
+    // Galaxie : l'exposant 1,55 creuse volontairement l'écart. Une échelle
+    // linéaire donnerait une nuée de points moyens ; ici 3 000 poussières,
+    // quelques dizaines d'astres, une poignée de géantes.
+    siz[i] = 5 + Math.pow(n.w ?? 0, 1.55) * 108;
   }
   nodeGeo.computeBoundingSphere();
 
   const box = new THREE.Box3().setFromBufferAttribute(nodeGeo.getAttribute('position'));
   box.getCenter(cam.target);
   cam.radius = box.getSize(new THREE.Vector3()).length() * 0.88;
+  // Point de retour : une fois qu'on s'est promené, la rotation auto reprend
+  // autour d'un centre arbitraire et on ne sait plus revenir. On mémorise.
+  maison.target.copy(cam.target);
+  maison.radius = cam.radius;
 
   nodeMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -620,7 +657,12 @@ async function build() {
 
 // ── Interface ──────────────────────────────────────────────────────────────
 document.getElementById('close').onclick = clearSelection;
-addEventListener('keydown', e => { if (e.key === 'Escape') clearSelection(); });
+document.getElementById('btn-home').onclick = recentrer;
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') clearSelection();
+  // R comme recentrer — mais pas pendant qu'on tape dans la recherche
+  if ((e.key === 'r' || e.key === 'R') && e.target.tagName !== 'INPUT') recentrer();
+});
 
 document.getElementById('mode').onchange = e => {
   colorMode = e.target.value; hidden.clear(); recolor(); buildLegend();
