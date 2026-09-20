@@ -19,12 +19,12 @@ Graphe de connaissance unifié des projets du groupe Bony auto-mobile, construit
 | Dépôt | Nœuds | Arêtes | Communautés |
 |---|---:|---:|---:|
 | gearbox | 1 360 | 3 357 | 82 |
-| GRID | 938 | 1 802 | 61 |
+| GRID | **1 146** | **2 168** | **83** |
 | Forum-2026 | 479 | 697 | 69 |
 | clutch-press-review | 15 | 18 | 3 |
-| **Global** | **2 792** | **5 871** | — |
+| **Global** | **3 004** | **6 236** | — |
 
-Réduction mesurée : **10,5× moins de tokens par question** (`graphify benchmark`).
+Réduction mesurée : **14,5× moins de tokens par question** (`graphify benchmark`).
 
 ## Usage quotidien
 
@@ -54,10 +54,13 @@ le graphe du dépôt se régénère tout seul à chaque commit et à chaque chan
 
 Après un `git pull`, lancer `graphify update <dépôt>` (aucun LLM, instantané).
 
-## Passe sémantique (docs, PDF) — non effectuée
+## Passe sémantique (docs, PDF) — faite pour GRID uniquement
 
-Seule la passe **code** est faite (gratuite, locale). La passe sur les 43 documents
-(`CLAUDE.md`, `ETAT-PROJET.md`, `MODELE-DONNEES.md`, `brandbook.pdf`…) exige un backend LLM :
+GRID a reçu la passe complète (19 fichiers : docs + logo), via le modèle de l'assistant
+Claude Code — coût mesuré 365 030 tokens. Les trois autres dépôts n'ont que la passe code.
+
+La clé Gemini n'a pas pu servir : le compte Google est restreint (403 PERMISSION_DENIED
+sur toute génération, création de clé API interdite). Pour reprendre par API :
 
 ```powershell
 $env:ANTHROPIC_API_KEY = "..."        # ou GEMINI_API_KEY, OPENAI_API_KEY
