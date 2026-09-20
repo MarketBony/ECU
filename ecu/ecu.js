@@ -562,7 +562,7 @@ async function build() {
 
   const box = new THREE.Box3().setFromBufferAttribute(nodeGeo.getAttribute('position'));
   box.getCenter(cam.target);
-  cam.radius = box.getSize(new THREE.Vector3()).length() * 0.40;
+  cam.radius = box.getSize(new THREE.Vector3()).length() * 0.88;
 
   nodeMat = new THREE.ShaderMaterial({
     uniforms: {

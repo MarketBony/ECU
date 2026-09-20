@@ -1,99 +1,78 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t">
   <title id="t">ECU — Engine Control Unit, réseau de connaissance Bony</title>
   <!--
-    ECU · Engine Control Unit
-    Un circuit imprimé : le die central, ses pistes coudées, ses vias et ses
-    broches. Les pistes partent du cœur vers l'extérieur comme les synapses
-    du réseau qu'elles représentent.
+    ECU · Engine Control Unit — circuit imprimé.
+    Règle de dessin : aucune piste ne traverse le die. Elles partent toutes de
+    son bord vers l'extérieur, en ligne droite, et se terminent sur un via.
+    La version précédente les faisait naître à l'intérieur du carré central :
+    à 32 px le tout se lisait comme une tache.
     Dégradé charte Bony : #f75632 (Pantone 172 C) -> #8f12ab (Pantone 2602 C).
   -->
   <defs>
-    <linearGradient id="bony" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bony" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#f75632"/>
       <stop offset=".5" stop-color="#c1348c"/>
       <stop offset="1" stop-color="#8f12ab"/>
     </linearGradient>
-    <linearGradient id="trace" x1="128" y1="128" x2="384" y2="384" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f75632" stop-opacity=".92"/>
-      <stop offset="1" stop-color="#8f12ab" stop-opacity=".92"/>
-    </linearGradient>
     <linearGradient id="pin" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f75632" stop-opacity=".5"/>
-      <stop offset="1" stop-color="#8f12ab" stop-opacity=".5"/>
+      <stop offset="0" stop-color="#f75632" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#8f12ab" stop-opacity=".45"/>
     </linearGradient>
-    <radialGradient id="halo" cx="256" cy="256" r="196" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f75632" stop-opacity=".26"/>
-      <stop offset=".6" stop-color="#8f12ab" stop-opacity=".14"/>
+    <radialGradient id="halo" cx="256" cy="256" r="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f75632" stop-opacity=".22"/>
+      <stop offset=".6" stop-color="#8f12ab" stop-opacity=".12"/>
       <stop offset="1" stop-color="#8f12ab" stop-opacity="0"/>
     </radialGradient>
-    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
-      <feGaussianBlur stdDeviation="5.5" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
   </defs>
 
   <rect x="0" y="0" width="512" height="512" rx="112" fill="#0a0a12"/>
-  <circle cx="256" cy="256" r="196" fill="url(#halo)"/>
+  <circle cx="256" cy="256" r="200" fill="url(#halo)"/>
 
-  <!-- broches du boîtier -->
+  <!-- broches -->
   <g fill="url(#pin)">
-    <rect x="156" y="70" width="16" height="32" rx="7"/>
-    <rect x="208" y="70" width="16" height="32" rx="7"/>
-    <rect x="288" y="70" width="16" height="32" rx="7"/>
-    <rect x="340" y="70" width="16" height="32" rx="7"/>
-    <rect x="156" y="410" width="16" height="32" rx="7"/>
-    <rect x="208" y="410" width="16" height="32" rx="7"/>
-    <rect x="288" y="410" width="16" height="32" rx="7"/>
-    <rect x="340" y="410" width="16" height="32" rx="7"/>
-    <rect x="70" y="156" width="32" height="16" rx="7"/>
-    <rect x="70" y="208" width="32" height="16" rx="7"/>
-    <rect x="70" y="288" width="32" height="16" rx="7"/>
-    <rect x="70" y="340" width="32" height="16" rx="7"/>
-    <rect x="410" y="156" width="32" height="16" rx="7"/>
-    <rect x="410" y="208" width="32" height="16" rx="7"/>
-    <rect x="410" y="288" width="32" height="16" rx="7"/>
-    <rect x="410" y="340" width="32" height="16" rx="7"/>
+    <rect x="208" y="60" width="18" height="30" rx="8"/>
+    <rect x="286" y="60" width="18" height="30" rx="8"/>
+    <rect x="208" y="422" width="18" height="30" rx="8"/>
+    <rect x="286" y="422" width="18" height="30" rx="8"/>
+    <rect x="60" y="208" width="30" height="18" rx="8"/>
+    <rect x="60" y="286" width="30" height="18" rx="8"/>
+    <rect x="422" y="208" width="30" height="18" rx="8"/>
+    <rect x="422" y="286" width="30" height="18" rx="8"/>
   </g>
 
-  <!-- contour du boîtier -->
-  <rect x="102" y="102" width="308" height="308" rx="46"
-        fill="#0c0c16" stroke="url(#bony)" stroke-width="10" opacity=".95"/>
+  <!-- pistes : du bord du die vers l'extérieur, aucune ne le traverse -->
+  <g stroke="url(#bony)" stroke-width="13" stroke-linecap="round" fill="none">
+    <path d="M216 194 V126"/>
+    <path d="M256 194 V152"/>
+    <path d="M296 194 V126"/>
 
-  <!-- pistes : coudes à 90° et 45°, du die vers les broches -->
-  <g fill="none" stroke="url(#trace)" stroke-width="11"
-     stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
-    <!-- haut -->
-    <path d="M216 214 V170 H164"/>
-    <path d="M256 208 V138"/>
-    <path d="M296 214 V170 H348"/>
-    <!-- bas -->
-    <path d="M216 298 V342 H164"/>
-    <path d="M256 304 V374"/>
-    <path d="M296 298 V342 H348"/>
-    <!-- gauche -->
-    <path d="M214 236 H150 L128 258"/>
-    <path d="M208 276 H138"/>
-    <!-- droite -->
-    <path d="M298 236 H362 L384 258"/>
-    <path d="M304 276 H374"/>
+    <path d="M216 318 V386"/>
+    <path d="M256 318 V360"/>
+    <path d="M296 318 V386"/>
+
+    <path d="M194 216 H126"/>
+    <path d="M194 256 H152"/>
+    <path d="M194 296 H126"/>
+
+    <path d="M318 216 H386"/>
+    <path d="M318 256 H360"/>
+    <path d="M318 296 H386"/>
   </g>
 
-  <!-- vias : les nœuds du réseau posés sur les pistes -->
-  <g fill="url(#bony)" filter="url(#glow)">
-    <circle cx="164" cy="170" r="14"/>
-    <circle cx="348" cy="170" r="14"/>
-    <circle cx="164" cy="342" r="14"/>
-    <circle cx="348" cy="342" r="14"/>
-    <circle cx="256" cy="138" r="12"/>
-    <circle cx="256" cy="374" r="12"/>
-    <circle cx="128" cy="258" r="11"/>
-    <circle cx="384" cy="258" r="11"/>
-    <circle cx="138" cy="276" r="10"/>
-    <circle cx="374" cy="276" r="10"/>
+  <!-- vias en bout de piste : les nœuds du réseau -->
+  <g fill="url(#bony)">
+    <circle cx="216" cy="118" r="17"/>
+    <circle cx="296" cy="118" r="17"/>
+    <circle cx="216" cy="394" r="17"/>
+    <circle cx="296" cy="394" r="17"/>
+    <circle cx="118" cy="216" r="17"/>
+    <circle cx="118" cy="296" r="17"/>
+    <circle cx="394" cy="216" r="17"/>
+    <circle cx="394" cy="296" r="17"/>
   </g>
 
-  <!-- le die : cœur du calculateur -->
-  <rect x="206" y="206" width="100" height="100" rx="20"
-        fill="#0a0a12" stroke="url(#bony)" stroke-width="12"/>
-  <rect x="230" y="230" width="52" height="52" rx="11" fill="url(#bony)" filter="url(#glow)"/>
+  <!-- le die -->
+  <rect x="194" y="194" width="124" height="124" rx="26"
+        fill="#0a0a12" stroke="url(#bony)" stroke-width="14"/>
+  <rect x="226" y="226" width="60" height="60" rx="14" fill="url(#bony)"/>
 </svg>
