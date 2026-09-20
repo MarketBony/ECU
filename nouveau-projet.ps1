@@ -27,7 +27,6 @@ $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Root = Split-Path -Parent $Kb
 $Fichier = Join-Path $Kb 'projets.ps1'
 . (Join-Path $Kb 'python.ps1')
 $Py = Get-PythonECU
@@ -139,7 +138,7 @@ if ($SansCarte) {
     Write-Host '  7/7  disposition 3D : ignoree' -ForegroundColor DarkGray
 } else {
     Write-Host '  7/7  recalcul de la disposition 3D (~1 min)...' -NoNewline
-    & $Py (Join-Path $Root '_layout3d.py') --force *>$null
+    & $Py (Join-Path $Kb 'tools\_layout3d.py') --force *>$null
     if ($LASTEXITCODE -eq 0) { Write-Host ' ok' -ForegroundColor Green }
     else { Write-Host ' echec' -ForegroundColor Red }
 }

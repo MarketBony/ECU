@@ -15,7 +15,7 @@ from graphify.analyze import suggest_questions
 from graphify.report import generate
 from graphify.export import to_json
 
-LABELS_FILE = r'C:\Users\Operateur\Documents\graphify-kb\_labels.json'
+LABELS_FILE = str(Path(__file__).with_name('_labels.json'))
 
 
 def derive(ids, lab, src):

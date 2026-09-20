@@ -14,7 +14,6 @@ $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Root = Split-Path -Parent $Kb
 $Ecu  = Join-Path $Kb 'ecu'
 . (Join-Path $Kb 'python.ps1')
 $Py   = Get-PythonECU
@@ -83,7 +82,7 @@ if (-not $Vite) {
         else { Write-Host 'pas indexe' -ForegroundColor DarkYellow }
     }
     Write-Host '   disposition 3D...' -NoNewline
-    & $Py (Join-Path $Root '_layout3d.py') *>$null
+    & $Py (Join-Path $Kb 'tools\_layout3d.py') *>$null
     if ($LASTEXITCODE -ne 0) { Write-Host ' echec' -ForegroundColor Red; Fin 1 }
     Write-Host ' ok' -ForegroundColor Green
 }

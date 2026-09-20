@@ -13,7 +13,6 @@ $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Root = Split-Path -Parent $Kb
 . (Join-Path $Kb 'python.ps1')
 $Py   = Get-PythonECU
 
@@ -72,7 +71,7 @@ Copy-Item (Join-Path $env:USERPROFILE '.graphify\global-graph.json') (Join-Path 
 Push-Location $Kb
 graphify export html --graph '.\global-graph.json' *>$null
 Pop-Location
-& $Py (Join-Path $Root '_layout3d.py')
+& $Py (Join-Path $Kb 'tools\_layout3d.py')
 
 Write-Host ''
 Write-Host '=== Termine ===' -ForegroundColor Green

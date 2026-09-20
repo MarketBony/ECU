@@ -181,7 +181,7 @@ $Py = Get-PythonECU        # résout et vérifie que graphify s'importe
 Pour réparer des hooks mal épinglés :
 
 ```powershell
-& (Get-PythonECU) "C:\Users\Operateur\Documents\graphify-kb\_repin.py"
+& (Get-PythonECU) "C:\Users\Operateur\Documents\graphify-kb\kb\tools\_repin.py"
 ```
 
 ### 2. `.html` est associé à Internet Explorer
@@ -265,5 +265,5 @@ graphify global add "$P\graphify-out\graph.json" --as $T
 #   @{ Tag = 'mon-projet'; Chemin = 'C:\Users\Operateur\Documents\MON-PROJET' }
 
 # disposition 3D
-& (Get-PythonECU) "C:\Users\Operateur\Documents\graphify-kb\_layout3d.py" --force
+& (Get-PythonECU) "C:\Users\Operateur\Documents\graphify-kb\kb\tools\_layout3d.py" --force
 ```
