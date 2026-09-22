@@ -62,6 +62,18 @@ function Serveur-Actif {
     }
 }
 
+# Un serveur deja en place peut dater d'avant tools\serveur.py, donc servir sans
+# Cache-Control — et le navigateur reprend alors ses copies perimees. On le
+# reconnait a son absence d'en-tete et on le remplace, plutot que de laisser
+# trainer une session qui affichera un graphe faux jusqu'au prochain redemarrage.
+function Serveur-Conforme {
+    try {
+        $r = Invoke-WebRequest "http://127.0.0.1:$Port/version.json" `
+             -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+        return ([string]$r.Headers['Cache-Control'] -match 'no-cache')
+    } catch { return $false }
+}
+
 function Arreter-Serveur {
     $tues = @()
 
@@ -77,7 +89,7 @@ function Arreter-Serveur {
     # donc aussi les processus qui servent reellement ce port, en verifiant leur
     # ligne de commande pour ne jamais tuer un voisin innocent.
     Get-CimInstance Win32_Process -Filter "Name like '%python%'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -match 'http\.server' -and $_.CommandLine -match "\b$Port\b" } |
+        Where-Object { $_.CommandLine -match 'http\.server|serveur\.py' -and $_.CommandLine -match "\b$Port\b" } |
         ForEach-Object {
             if ($tues -notcontains $_.ProcessId) {
                 Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
@@ -185,12 +197,18 @@ if (-not $Py) {
 }
 
 # ── 1. serveur local ──
+if ((Serveur-Actif) -and -not (Serveur-Conforme)) {
+    Write-Host '   serveur obsolete (sans Cache-Control), remplacement...' -ForegroundColor DarkYellow
+    Arreter-Serveur | Out-Null
+    Start-Sleep -Milliseconds 400
+}
+
 if (Serveur-Actif) {
     Write-Host "   serveur deja actif sur $Port" -ForegroundColor DarkGray
 } else {
     Write-Host '   demarrage du serveur...' -NoNewline
     $p = Start-Process -FilePath $Py `
-        -ArgumentList @('-m', 'http.server', "$Port", '--bind', '127.0.0.1', '--directory', "`"$Ecu`"") `
+        -ArgumentList @((Join-Path $Kb 'tools\serveur.py'), "`"$Ecu`"", "$Port") `
         -WindowStyle Hidden -PassThru
     $p.Id | Out-File $PidF -Encoding ascii
     $n = 0
@@ -231,8 +249,8 @@ if ($Vite) {
 
 if (-not $pwa) {
     Write-Host ''
-    Write-Host '   Pas encore installe : la fenetre affiche un bouton « Installer ECU' -ForegroundColor DarkGray
-    Write-Host '   comme application » en bas de la colonne de gauche. Un clic, une' -ForegroundColor DarkGray
+    Write-Host '   Pas encore installe : la fenetre affiche un bouton "Installer ECU' -ForegroundColor DarkGray
+    Write-Host '   comme application" en bas de la colonne de gauche. Un clic, une' -ForegroundColor DarkGray
     Write-Host '   seule fois, et la barre des taches montrera le logo ECU au lieu de' -ForegroundColor DarkGray
     Write-Host '   celui de Chrome.' -ForegroundColor DarkGray
 }
