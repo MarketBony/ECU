@@ -2,11 +2,11 @@
  * Tout est servi depuis le cache : l'application fonctionne hors-ligne, et le
  * réseau n'est sollicité que pour rafraîchir data.json en arrière-plan.
  */
-const CACHE = 'ecu-v10';
+const CACHE = 'ecu-v11';
 const COQUILLE = [
   './',
   './index.html',
-  './ecu.js?v=10',   // doit suivre EXACTEMENT le src d'index.html, sinon on
+  './ecu.js?v=11',   // doit suivre EXACTEMENT le src d'index.html, sinon on
                     // precharge une URL que la page ne demande jamais
 
   './data.json',

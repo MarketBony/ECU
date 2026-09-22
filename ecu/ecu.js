@@ -1274,9 +1274,16 @@ document.getElementById('hhead').onclick =
 function surveillerVersion() {
   const bandeau = document.getElementById('maj');
   document.getElementById('maj-go').onclick = () => location.reload();
-  setInterval(async () => {
+
+  async function verifier() {
     try {
-      const v = await (await fetch('version.json', { cache: 'no-store' })).json();
+      // L'horodatage dans l'URL n'est pas une précaution de style : un service
+      // worker d'une version précédente reste aux commandes jusqu'à ce que la
+      // page soit rechargée, et le sien met TOUT en cache sauf data.json. Il
+      // servirait donc éternellement le premier version.json qu'il a vu, et le
+      // signal de fraîcheur ne se déclencherait jamais. Une URL toujours neuve
+      // ne peut être servie par aucun cache.
+      const v = await (await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' })).json();
       if (!v || !v.hash) return;
       const dernier = DATA.hist && DATA.hist.length ? DATA.hist[0].h : '';
       if (v.hash !== DATA.hash || v.dernier !== dernier) {
@@ -1284,7 +1291,15 @@ function surveillerVersion() {
         ajusterHisto();   // la barre s'élargit : le volet peut devoir remonter
       }
     } catch (e) { /* serveur coupé ou version.json pas encore écrit : on réessaie */ }
-  }, 20000);
+  }
+
+  setInterval(verifier, 20000);
+  // Chrome bride sévèrement les minuteries d'une fenêtre en arrière-plan : le
+  // rafraîchissement peut finir sans que le sondage ne tourne. Revenir sur la
+  // fenêtre est justement le moment où l'on veut savoir.
+  addEventListener('visibilitychange', () => { if (!document.hidden) verifier(); });
+  addEventListener('focus', verifier);
+  verifier();
 }
 
 build().then(() => {

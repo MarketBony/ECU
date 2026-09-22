@@ -22,6 +22,18 @@ Ce qui a changé avec le déplacement :
 `ecu.js`, conservé pour la trace, pas pour être relancé (ses `assert`
 échoueraient).
 
+## La liste des projets ne se recopie pas
+
+`_layout3d.py` lit `projets.ps1` au démarrage (`depots_declares()`). Il en portait
+une copie en dur, qui a divergé le 22/09/2026 : un quatrième projet branché, ses
+nœuds bien présents dans la galaxie — ils viennent du graphe global, qui ne passe
+pas par ce fichier — mais **aucun de ses commits, et aucune date pour ses
+fichiers**, les deux se lisant depuis cette liste. Vu de l'application :
+« l'historique ne se met plus à jour », alors que tout le reste marchait.
+
+Une lecture qui échoue s'arrête **bruyamment**. Se rabattre sur une liste de
+secours recréerait exactement le silence qu'on vient de corriger.
+
 **Reste hors de ce chantier — étape 4 du plan :** `_layout3d.py` contient encore
-des chemins Windows en dur (`SRC`, `OUT`, `DEPOTS`). C'est ce qui l'empêche de
-tourner sur un runner Linux, et ça se traite en même temps que la CI.
+`SRC` et `OUT` en chemins Windows absolus. C'est ce qui l'empêche de tourner sur
+un runner Linux, et ça se traite en même temps que la CI.

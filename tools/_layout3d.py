@@ -34,11 +34,29 @@ OUT = Path(r'C:\Users\Operateur\Documents\graphify-kb\kb\ecu\data.json')
 SEED = 42
 ECHELLE = 1250.0
 
-DEPOTS = {
-    'gearbox': r'C:\Users\Operateur\Documents\gearbox3backup',
-    'GRID': r'C:\Users\Operateur\Documents\RELTEL',
-    'Forum-2026': r'C:\Users\Operateur\Documents\APP FORUM',
-}
+def depots_declares():
+    """Les projets branches, lus dans projets.ps1 — la source unique de verite.
+
+    CETTE LISTE ETAIT RECOPIEE ICI A LA MAIN, et le 22/09/2026 elle a fini par
+    diverger : un quatrieme projet a ete branche, ses noeuds sont apparus dans
+    la galaxie — ils viennent du graphe global, qui ne passe pas par ici — mais
+    ni ses commits ni les dates de ses fichiers, qui se lisent DEPUIS CETTE
+    LISTE. Symptome vu par l'utilisateur : « l'historique ne se met plus a
+    jour », alors que tout le reste marchait. Une copie qu'il faut penser a
+    tenir a jour finit toujours par ne plus l'etre ; on lit donc l'original.
+
+    Un echec est BRUYANT : se rabattre sur une liste de secours recreerait
+    exactement le silence qu'on vient de corriger.
+    """
+    fichier = Path(__file__).resolve().parent.parent / 'projets.ps1'
+    texte = fichier.read_text(encoding='utf-8-sig')   # le fichier porte un BOM
+    trouves = re.findall(r"Tag\s*=\s*'([^']+)'\s*;\s*Chemin\s*=\s*'([^']+)'", texte)
+    if not trouves:
+        raise SystemExit(f'aucun projet lu dans {fichier} — format inattendu')
+    return dict(trouves)
+
+
+DEPOTS = depots_declares()
 
 
 def dates_par_fichier(depot):
