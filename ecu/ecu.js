@@ -1271,9 +1271,49 @@ document.getElementById('hhead').onclick =
 // sans jamais le savoir : c'est la panne invisible du piège n°8 du plan.
 // On compare DEUX champs — l'empreinte du graphe ET le dernier commit — parce
 // qu'un commit de documents seuls change l'historique sans changer le graphe.
+/** « 22/09 à 17:33 » — la date de fabrication des données affichées. */
+function dateCourte(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '?' : d.toLocaleString('fr-FR',
+    { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' à');
+}
+
 function surveillerVersion() {
   const bandeau = document.getElementById('maj');
-  document.getElementById('maj-go').onclick = () => location.reload();
+  const texte = document.getElementById('maj-txt');
+  const bouton = document.getElementById('maj-go');
+  bouton.onclick = () => location.reload();
+
+  // LE SERVEUR PEUT ÊTRE MORT SANS QUE RIEN NE LE DISE. Le service worker sert
+  // l'application entière depuis son cache : la fenêtre s'ouvre, la galaxie
+  // tourne, tout a l'air normal — avec les données de la dernière fois. C'est
+  // arrivé le 22/09/2026 : ECU semblait ignorer un projet qui y était depuis
+  // une heure, et le vrai coupable était un serveur arrêté. Un échec de sondage
+  // ne doit donc PAS être avalé ; c'est le piège n°8 du plan, à l'envers.
+  function horsLigne() {
+    bandeau.classList.add('show', 'froid');
+    bouton.style.display = 'none';
+    texte.textContent = DATA.date
+      ? `hors ligne — données du ${dateCourte(DATA.date)}`
+      : 'hors ligne — serveur ECU arrêté';
+    bandeau.title = 'Le serveur local ne répond pas : ces données viennent du cache. '
+      + 'Relance ECU par son icône.';
+    ajusterHisto();
+  }
+
+  function enLigne(v) {
+    const dernier = DATA.hist && DATA.hist.length ? DATA.hist[0].h : '';
+    if (v.hash !== DATA.hash || v.dernier !== dernier) {
+      bandeau.classList.add('show');
+      bandeau.classList.remove('froid');
+      bouton.style.display = '';
+      texte.textContent = 'réseau mis à jour';
+      bandeau.title = 'Le graphe a changé depuis l\'ouverture de cette fenêtre';
+      ajusterHisto();   // la barre s'élargit : le volet peut devoir remonter
+    } else {
+      bandeau.classList.remove('show', 'froid');   // tout va bien : on se tait
+    }
+  }
 
   async function verifier() {
     try {
@@ -1283,14 +1323,11 @@ function surveillerVersion() {
       // servirait donc éternellement le premier version.json qu'il a vu, et le
       // signal de fraîcheur ne se déclencherait jamais. Une URL toujours neuve
       // ne peut être servie par aucun cache.
-      const v = await (await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' })).json();
-      if (!v || !v.hash) return;
-      const dernier = DATA.hist && DATA.hist.length ? DATA.hist[0].h : '';
-      if (v.hash !== DATA.hash || v.dernier !== dernier) {
-        bandeau.classList.add('show');
-        ajusterHisto();   // la barre s'élargit : le volet peut devoir remonter
-      }
-    } catch (e) { /* serveur coupé ou version.json pas encore écrit : on réessaie */ }
+      const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const v = await r.json();
+      if (v && v.hash) enLigne(v); else horsLigne();
+    } catch (e) { horsLigne(); }
   }
 
   setInterval(verifier, 20000);

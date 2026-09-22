@@ -148,6 +148,10 @@ def historique(depots, repos, noeuds_par_fichier, n=40):
     return tout
 
 
+def maintenant_iso():
+    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+
 def ecrire_version(empreinte, hist):
     """Signal de fraicheur, lu par le viewer pour proposer un rechargement.
 
@@ -163,7 +167,7 @@ def ecrire_version(empreinte, hist):
     OUT.with_name('version.json').write_text(json.dumps({
         'hash': empreinte,
         'dernier': hist[0]['h'] if hist else '',
-        'date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'date': maintenant_iso(),
         'commits': len(hist),
     }, ensure_ascii=False), encoding='utf-8')
 
@@ -314,6 +318,7 @@ if OUT.is_file() and not FORCE:
     if deja and deja.get('hash') == empreinte:
         print(f'graphe inchange ({empreinte}) — disposition conservee')
         deja['hist'] = historique(DEPOTS, deja.get('repos') or [], noeuds_par_fichier)
+        deja['date'] = maintenant_iso()
         OUT.write_text(json.dumps(deja, ensure_ascii=False, separators=(',', ':')),
                        encoding='utf-8')
         ecrire_version(empreinte, deja['hist'])
@@ -497,7 +502,8 @@ print(f'historique : {len(hist)} commits')
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps({
-    'hash': empreinte, 'nodes': nodes_out, 'links': links_out,
+    'hash': empreinte, 'date': maintenant_iso(),
+    'nodes': nodes_out, 'links': links_out,
     'repos': repos, 'types': types, 'comms': comms,
     'commNodes': comms_out, 'commLinks': comm_links, 'hist': hist,
 }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')

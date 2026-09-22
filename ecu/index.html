@@ -225,6 +225,11 @@ select option{background:#14141f}
 #maj .pt{width:7px;height:7px;border-radius:50%;background:var(--bony-orange);
   box-shadow:0 0 8px var(--bony-orange);animation:respire 1.8s ease-in-out infinite}
 @keyframes respire{50%{opacity:.35}}
+/* Hors ligne : le serveur ne répond pas et le service worker sert l'application
+   depuis son cache. Elle s'affiche parfaitement, avec des données d'il y a des
+   heures — sans cette pastille froide, rien ne le dirait. */
+#maj.froid{color:var(--muted)}
+#maj.froid .pt{background:var(--muted);box-shadow:none;animation:none}
 #maj button{border:0;border-radius:8px;padding:3.5px 10px;font:inherit;font-size:11px;
   cursor:pointer;color:#fff;
   background:linear-gradient(95deg,rgba(247,86,50,.9),rgba(143,18,171,.9))}
@@ -422,7 +427,7 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
     <button id="btn-home" title="Recentrer la vue (R)">⌖ Recentrer</button>
     <button id="btn-histo" title="Historique des commits (H)">⟲ Historique</button>
     <span id="maj" title="Le graphe a changé depuis l'ouverture de cette fenêtre">
-      <span class="pt"></span>réseau mis à jour<button id="maj-go">Recharger</button>
+      <span class="pt"></span><span id="maj-txt">réseau mis à jour</span><button id="maj-go">Recharger</button>
     </span>
     <span><b id="n-nodes">—</b> neurones</span>
     <span><b id="n-links">—</b> synapses</span>
@@ -445,7 +450,7 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
      a jour du viewer peut ne jamais arriver a l'ecran — vu le 22/09/2026, avec
      un index.html neuf servi a cote d'un script perime. Ce numero suit celui du
      cache du service worker (sw.js) : les deux montent ensemble. -->
-<script type="module" src="ecu.js?v=11"></script>
+<script type="module" src="ecu.js?v=12"></script>
 <script>
 if ('serviceWorker' in navigator) {
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
