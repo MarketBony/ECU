@@ -61,8 +61,12 @@ recliquer éteint. `Échap` remet tout à plat.
 |---|---|---:|
 | gearbox | `Documents\gearbox3backup` | 1 638 |
 | GRID | `Documents\RELTEL` | 1 434 |
-| Forum-2026 | `Documents\APP FORUM` | 581 |
-| **Global** | — | **3 679 nœuds, 6 986 arêtes** |
+| Forum-2026 | `Documents\APP FORUM` | 582 |
+| **Global** | — | **3 680 nœuds, 6 987 arêtes** |
+
+Ces nombres bougent à chaque rafraîchissement : le graphe suit l'arbre de
+travail, pas seulement les commits. `ecu/version.json` porte l'empreinte du
+graphe réellement affiché, c'est elle qui fait foi.
 
 Les 3 projets ont la passe **code + documents**.
 `clutch-press-review` a été retiré du réseau (projet obsolète).
