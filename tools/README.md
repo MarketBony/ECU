@@ -1,7 +1,9 @@
 # tools — le moteur d'ECU
 
-Ces scripts vivaient dans `graphify-kb/` (le dossier **parent** du dépôt git),
-donc hors de tout versionnement. `_layout3d.py` est tout le moteur de
+Ces scripts vivaient dans `graphify-kb/`, le dossier **parent** du dépôt git de
+l'époque, donc hors de tout versionnement. (Ce double niveau n'existe plus : le
+dépôt a été aplati en `Documents\ECU\` le 22/09/2026, ce qui supprime la cause
+de ce piège.) `_layout3d.py` est tout le moteur de
 disposition 3D, `_labels.json` porte 194 libellés de communautés écrits à la
 main : un disque perdu et ECU n'était plus reconstructible.
 

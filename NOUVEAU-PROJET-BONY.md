@@ -21,12 +21,12 @@ réseau à jour tout seul, gratuitement.
 
 | Quoi | Où |
 |---|---|
-| Racine ECU | `C:\Users\Operateur\Documents\graphify-kb` |
-| Application 3D | `…\graphify-kb\kb\ecu\` — raccourci **ECU** sur le Bureau |
+| Racine ECU | `C:\Users\Operateur\Documents\ECU` |
+| Application 3D | `…\ECU\ecu\` — raccourci **ECU** sur le Bureau |
 | Graphe global | `C:\Users\Operateur\.graphify\global-graph.json` |
-| Liste des projets branchés | `…\graphify-kb\kb\projets.ps1` — **source unique de vérité** |
+| Liste des projets branchés | `…\ECU\projets.ps1` — **source unique de vérité** |
 | Index d'un projet | `<projet>\graphify-out\` — **dans le dossier de travail lui-même** |
-| Sauvegarde | dépôt privé [MarketBony/graphify-kb](https://github.com/MarketBony/graphify-kb) |
+| Sauvegarde | dépôt privé [MarketBony/ECU](https://github.com/MarketBony/ECU) |
 
 Les index vivent **dans les dossiers de travail réels**, pas dans des clones
 séparés. C'est précisément ce qui rend la mise à jour automatique : le hook git du
@@ -46,7 +46,7 @@ Les projets personnels n'y entrent pas. En cas de doute, demander avant de branc
 ```powershell
 graphify --version          # attendu : 0.9.x ou plus
 gh auth status              # attendu : logged in to github.com account MarketBony
-Test-Path "C:\Users\Operateur\Documents\graphify-kb\kb\nouveau-projet.ps1"
+Test-Path "C:\Users\Operateur\Documents\ECU\nouveau-projet.ps1"
 ```
 
 Si `graphify` est introuvable :
@@ -62,7 +62,7 @@ et si ça ne suffit pas : `uv tool install "graphifyy[all]"`.
 Une seule commande fait tout. Remplacer le chemin par celui du nouveau projet.
 
 ```powershell
-& "C:\Users\Operateur\Documents\graphify-kb\kb\nouveau-projet.ps1" "C:\Users\Operateur\Documents\MON-PROJET" -Github
+& "C:\Users\Operateur\Documents\ECU\nouveau-projet.ps1" "C:\Users\Operateur\Documents\MON-PROJET" -Github
 ```
 
 | Option | Effet |
@@ -88,7 +88,7 @@ Le nouveau projet doit apparaître avec son nombre de nœuds.
 
 ```powershell
 Test-Path "C:\Users\Operateur\Documents\MON-PROJET\.git\hooks\post-commit"
-Select-String -Path "C:\Users\Operateur\Documents\graphify-kb\kb\projets.ps1" -Pattern "MON-PROJET"
+Select-String -Path "C:\Users\Operateur\Documents\ECU\projets.ps1" -Pattern "MON-PROJET"
 ```
 
 Puis **vérifier que le hook fonctionne vraiment** — ne pas se contenter de sa présence :
@@ -140,7 +140,7 @@ toute génération) : inutile de repasser par là.
 Double-clic sur le raccourci **ECU** du Bureau, ou :
 
 ```powershell
-& "C:\Users\Operateur\Documents\graphify-kb\kb\ECU.ps1"
+& "C:\Users\Operateur\Documents\ECU\ECU.ps1"
 ```
 
 Le nouveau projet doit apparaître dans la légende « Couleur par → Projet ».
@@ -148,7 +148,7 @@ Le nouveau projet doit apparaître dans la légende « Couleur par → Projet »
 ### 5. Sauvegarder l'état du réseau
 
 ```powershell
-cd "C:\Users\Operateur\Documents\graphify-kb\kb"
+cd "C:\Users\Operateur\Documents\ECU"
 git add -A
 git commit -m "Branchement de MON-PROJET sur ECU"
 git push origin master
@@ -174,14 +174,14 @@ silencieusement.
 **Ne jamais coder un chemin d'interpréteur en dur.** Utiliser :
 
 ```powershell
-. "C:\Users\Operateur\Documents\graphify-kb\kb\python.ps1"
+. "C:\Users\Operateur\Documents\ECU\python.ps1"
 $Py = Get-PythonECU        # résout et vérifie que graphify s'importe
 ```
 
 Pour réparer des hooks mal épinglés :
 
 ```powershell
-& (Get-PythonECU) "C:\Users\Operateur\Documents\graphify-kb\kb\tools\_repin.py"
+& (Get-PythonECU) "C:\Users\Operateur\Documents\ECU\tools\_repin.py"
 ```
 
 ### 2. `.html` est associé à Internet Explorer
@@ -265,5 +265,5 @@ graphify global add "$P\graphify-out\graph.json" --as $T
 #   @{ Tag = 'mon-projet'; Chemin = 'C:\Users\Operateur\Documents\MON-PROJET' }
 
 # disposition 3D
-& (Get-PythonECU) "C:\Users\Operateur\Documents\graphify-kb\kb\tools\_layout3d.py" --force
+& (Get-PythonECU) "C:\Users\Operateur\Documents\ECU\tools\_layout3d.py" --force
 ```

@@ -6,7 +6,7 @@ il vaut mieux qu'ils échouent bruyamment (assert) que silencieusement.
 """
 from pathlib import Path
 
-p = Path(r'C:\Users\Operateur\Documents\graphify-kb\kb\ecu\ecu.js')
+p = Path(__file__).resolve().parent.parent / 'ecu' / 'ecu.js'
 t = p.read_text(encoding='utf-8')
 
 

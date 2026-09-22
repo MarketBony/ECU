@@ -30,7 +30,10 @@ import networkx as nx
 import numpy as np
 
 SRC = Path(r'C:\Users\Operateur\.graphify\global-graph.json')
-OUT = Path(r'C:\Users\Operateur\Documents\graphify-kb\kb\ecu\data.json')
+# Deduit de l'emplacement de ce fichier, jamais ecrit en dur : le dossier a ete
+# renomme le 22/09/2026 (graphify-kb\kb -> ECU) et un chemin absolu aurait fait
+# ecrire le moteur a cote de l'application, en silence.
+OUT = Path(__file__).resolve().parent.parent / 'ecu' / 'data.json'
 SEED = 42
 ECHELLE = 1250.0
 

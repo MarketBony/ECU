@@ -1,4 +1,4 @@
-# graphify-kb — réseau de connaissance Bony
+# ECU — réseau de connaissance Bony
 
 Graphe de connaissance unifié des projets du groupe Bony auto-mobile, construit avec
 [Graphify](https://github.com/Graphify-Labs/graphify) (AST tree-sitter, local, déterministe).

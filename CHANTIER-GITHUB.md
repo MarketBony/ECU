@@ -35,7 +35,7 @@ Tout dépend de cette machine. Si tu codes ailleurs, rien ne bouge.
      │  parse le code (tree-sitter, 0 token)
      │  commite graphify-out/ dans le dépôt
      ▼
-  Action « fusion » dans graphify-kb
+  Action « fusion » dans ECU
      │  récupère les 3 graphes, les fusionne
      │  recalcule la disposition 3D
      │  publie data.json
@@ -114,7 +114,7 @@ jobs:
 
 ### B — Fusionner  ·  ~2 h
 
-Un workflow dans `graphify-kb`, déclenché par les trois autres
+Un workflow dans `ECU`, déclenché par les trois autres
 (`repository_dispatch`) ou toutes les heures :
 
 ```yaml
@@ -131,7 +131,7 @@ et l'historique git **sur le disque local**. En CI il aura les clones sous la
 main, donc ça marche — mais il faudra remplacer les chemins codés en dur
 (`DEPOTS = {...}`) par une détection relative. Une heure de travail propre.
 
-Sortie : `data.json` publié en artefact, ou commité dans `graphify-kb`.
+Sortie : `data.json` publié en artefact, ou commité dans `ECU`.
 
 ### C — Héberger sur le VPS  ·  ~2 h
 
@@ -196,7 +196,7 @@ ce sera vraiment gênant.
 
 1. **Authentification sur `/ECU`.** Basic auth suffit-il, ou tu veux mieux ?
    Rappel : le graphe expose la structure de ton code privé.
-2. **Où vit `data.json` ?** Commité dans `graphify-kb` (versionné, lisible dans
+2. **Où vit `data.json` ?** Commité dans `ECU` (versionné, lisible dans
    l'historique) ou simple artefact (plus propre, mais pas d'historique).
 3. **Fréquence.** À chaque push, ou groupé toutes les heures ?
 4. **Le sort des hooks locaux.** Supprimés, ou gardés en secours ?

@@ -1,10 +1,19 @@
 # Deplace l'index graphify des clones temporaires vers les VRAIS dossiers de travail,
 # puis y installe les hooks pour que chaque commit mette le reseau a jour.
+#
+# SCRIPT HISTORIQUE — il ne tourne plus tel quel. Il decrit la toute premiere
+# installation, ou les depots etaient clones sous <racine>\repos\ avant d'etre
+# rebranches sur les dossiers de travail. Ce dossier `repos\` n'existe plus
+# depuis longtemps ; il en reste seulement un `source_path` mort pour gearbox
+# dans ~/.graphify/global-manifest.json, sans effet sur le graphe.
+# Conserve pour la trace. Pour brancher un projet aujourd'hui :
+# nouveau-projet.ps1, documente dans NOUVEAU-PROJET-BONY.md.
 
 $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
-$Root = 'C:\Users\Operateur\Documents\graphify-kb'
+# Deduit de l'emplacement de ce fichier : le dossier a ete renomme le 22/09/2026.
+$Root = Split-Path -Parent $PSScriptRoot
 $Docs = 'C:\Users\Operateur\Documents'
 
 # clone temporaire  ->  vrai dossier de travail  ->  tag dans le graphe global

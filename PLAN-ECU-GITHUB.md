@@ -47,13 +47,12 @@ application 3D maison (three.js, shaders, disposition précalculée).
 
 | Quoi | Où |
 |---|---|
-| Racine du projet | `C:\Users\Operateur\Documents\graphify-kb` |
-| **Dépôt git** | `…\graphify-kb\kb` ← **attention, c'est `kb`, pas la racine** |
-| Application 3D | `…\graphify-kb\kb\ecu\` |
-| Scripts du moteur | `…\graphify-kb\kb\tools\` ← **versionnés depuis l'étape 0** |
+| **Racine du projet, et dépôt git** | `C:\Users\Operateur\Documents\ECU` — les deux ne font plus qu'un depuis le 22/09/2026 |
+| Application 3D | `…\ECU\ecu\` |
+| Scripts du moteur | `…\ECU\tools\` ← **versionnés depuis l'étape 0** |
 | Graphe global | `C:\Users\Operateur\.graphify\global-graph.json` |
-| Liste des projets | `…\graphify-kb\kb\projets.ps1` — source unique de vérité |
-| Sauvegarde | [MarketBony/graphify-kb](https://github.com/MarketBony/graphify-kb) (privé) |
+| Liste des projets | `…\ECU\projets.ps1` — source unique de vérité |
+| Sauvegarde | [MarketBony/ECU](https://github.com/MarketBony/ECU) (privé) |
 
 ### Les trois projets indexés
 
@@ -108,7 +107,7 @@ nouveau document exigent un `/graphify .` occasionnel.
 ## 2. Décisions déjà prises par Théo
 
 1. **Authentification** : login / mot de passe simple (`basic_auth` Caddy).
-2. **Où vit `data.json`** : branche orpheline `deploy` de `graphify-kb`, écrasée
+2. **Où vit `data.json`** : branche orpheline `deploy` de `ECU`, écrasée
    à chaque publication.
 3. **Fréquence** : à chaque push.
 4. **Hooks locaux** : **à garder** — décision renversée le 20/09/2026. Ils sont
@@ -174,7 +173,7 @@ pareil.
      .github/workflows/ecu-ping.yml    ~12 lignes, dispatch ← étape 6
             │  push
             ▼
-  graphify-kb — branche main (humaine)
+  ECU — branche main (humaine)
      state/<repo>/graph.json + manifest.json + cache/   ← les 888 nœuds docs
      tools/_layout3d.py et les 10 autres scripts       ← enfin versionnés
             │
@@ -226,9 +225,11 @@ Chaque étape est vérifiable seule et annulable par une commande.
 
 ### Étape 0 — Sauver ce qui n'est nulle part · ✅ **FAIT le 20/09/2026** (`e8ea00a`)
 
-**11 scripts, 42 Ko, n'étaient dans aucun dépôt git.** Le dépôt est
-`graphify-kb\kb`, pas `graphify-kb` — les scripts du dossier parent étaient hors
-de son périmètre :
+**11 scripts, 42 Ko, n'étaient dans aucun dépôt git.** À l'époque le projet
+vivait dans `graphify-kb\`, qui ne contenait que le dépôt `kb\` : les scripts
+posés dans le dossier parent étaient donc hors de tout versionnement. Ce double
+niveau a été supprimé le 22/09/2026 — il n'y a plus qu'un dossier, `ECU\`, et
+la cause de ce piège avec lui.
 
 ```
 _layout3d.py      15 992 o   ← tout le moteur de disposition 3D
@@ -369,7 +370,7 @@ Host github.com
   IdentitiesOnly yes
 ```
 
-Une deploy key est liée à **un seul** dépôt. Cloner `graphify-kb` avec cette
+Une deploy key est liée à **un seul** dépôt. Cloner `ECU` avec cette
 config présenterait la clé de gearbox et GitHub répondrait
 `ERROR: Repository not found` — message trompeur qui fait chercher un problème
 de droits pendant une heure. D'où :
@@ -381,7 +382,7 @@ Host github-ecu
   IdentitiesOnly yes
 ```
 
-puis `git clone git@github-ecu:MarketBony/graphify-kb.git ~/ecu`.
+puis `git clone git@github-ecu:MarketBony/ECU.git ~/ecu`.
 
 Timer **systemd** (pas cron : on récupère `journalctl` et `OnFailure=`), toutes
 les 5 min, sous `flock`, avec `fetch --depth 1 && reset --hard origin/deploy` —
@@ -420,7 +421,7 @@ comparer le `data.json` produit à l'actuel. Il doit être identique
 
 ### Étape 5 — Workflow de fusion, en `workflow_dispatch` seul · 2 h
 
-- **Trois deploy keys lecture seule** dans les secrets de `graphify-kb`
+- **Trois deploy keys lecture seule** dans les secrets de `ECU`
   (`DEPLOY_KEY_GEARBOX`, etc.) plutôt qu'un PAT : elles n'expirent pas, sont
   limitées à un dépôt chacune, et ne sont liées à aucun compte humain. Un PAT
   fine-grained expire à 12 mois et le réseau s'arrêterait sans bruit.
@@ -479,7 +480,7 @@ là, le bénéfice principal est acquis.
 | 9 | `Dockerfile.frontend` fait `COPY . .` depuis la racine | `~/ecu` est hors de `~/gearbox`, mais ajouter `ecu` au `.dockerignore` par précaution |
 | 10 | `rebuild.ps1` (local) et la CI écrivent le même `kb/ecu/data.json` → conflit sur 700 Ko de JSON minifié | la séparation `main` / `deploy` supprime la classe de problème |
 | 11 | Le graphe contient la prose de `BUGS-CONNUS.md`, `ETAT-PROJET.md`, `BACKEND-AUDIT.md`. `ACCES-INFRA-SECRET.md` en est absent **parce que le `.gitignore` est respecté par défaut** — c'est un défaut, pas une garantie. Un `--no-gitignore` un jour et des nœuds issus des fichiers de secrets partent sur le web derrière un simple `basic_auth`. | écrire la règle maintenant, avec sa justification |
-| 12 | Les commits de `graphify-kb` sont signés « Romane Chambon » alors que l'auteur est Théo | ✅ réglé : `user.name` / `user.email` du dépôt valent `Theo <theo.labonne@bonyauto-mobile.com>`, effectif depuis `e8ea00a` |
+| 12 | Les commits de `ECU` sont signés « Romane Chambon » alors que l'auteur est Théo | ✅ réglé : `user.name` / `user.email` du dépôt valent `Theo <theo.labonne@bonyauto-mobile.com>`, effectif depuis `e8ea00a` |
 | 13 | La passe documents restant manuelle, l'écart va se creuser : le code frais à la minute, les 888 nœuds « pourquoi » gelés | afficher dans ECU la date de la dernière passe documents à côté de celle du code |
 | 14 | Le jeton `gh` n'a pas le scope `workflow` : GitHub refuse tout push d'un `.github/workflows/*.yml`, avec un message qui parle d'OAuth App et fait chercher ailleurs | `gh auth refresh -h github.com -s workflow` — vérifié à l'étape 1, validé par Théo |
 
@@ -521,7 +522,7 @@ Le chantier GitHub est **en pause** (décision 2.7). Ce qui reste vrai :
 | Étapes 1 à 7 | ⏸️ gelées, au feu vert de Théo |
 
 Au feu vert, ouvrir Claude Code sur
-`C:\Users\Operateur\Documents\graphify-kb` et dire :
+`C:\Users\Operateur\Documents\ECU` et dire :
 
 > Lis `kb/PLAN-ECU-GITHUB.md`. Théo donne son feu vert, attaque l'étape 0 bis
 > puis l'étape 1.
