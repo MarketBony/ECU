@@ -47,14 +47,41 @@ Si le bouton n'obtient rien (Chrome ne propose pas toujours l'installation), le
 chemin manuel reste : menu `⋮` → *Ouvrir dans Chrome* → icône d'installation
 dans la barre d'adresse.
 
+**Une fois épinglée, l'application a besoin d'un serveur qui tourne.** Cliquer
+l'icône épinglée ouvre Chrome directement, sans passer par `ECU.ps1` : le
+service worker sert alors l'application depuis son cache, hors ligne. D'où
+l'entrée de démarrage, à poser une fois :
+
+```powershell
+.\creer-raccourci.ps1 -Demarrage
+```
+
+Elle lance le serveur seul à chaque ouverture de session — aucune fenêtre, aucun
+calcul. Le rafraîchissement du graphe reste déclenché par l'icône ECU du Bureau,
+parce que personne ne veut deux minutes de calcul au logon.
+
 | Commande | Effet |
 |---|---|
 | `.\ECU.ps1` | ouvre, puis rafraîchit en arrière-plan |
 | `.\ECU.ps1 -Vite` | ouvre sans rien rafraîchir |
 | `.\ECU.ps1 -Rafraichir` | met à jour le graphe sans ouvrir de fenêtre |
+| `.\ECU.ps1 -Serveur` | démarre le serveur seul, sans fenêtre |
 | `.\ECU.ps1 -Arreter` | arrête le serveur local |
+| `.\creer-raccourci.ps1 -Retirer` | enlève les deux raccourcis |
 
 Journal du rafraîchissement de fond : `~/.cache/ecu-rafraichissement.log`.
+
+### Quand ECU dit « hors ligne »
+
+La barre du bas affiche **« hors ligne — données du JJ/MM à HH:MM »**, pastille
+grise, quand le serveur local ne répond pas. L'application continue de
+fonctionner — le service worker la sert entièrement depuis son cache — mais ce
+qu'elle montre date de ce moment-là.
+
+Sans ce signal, une fenêtre ECU ouverte sur un serveur mort est **indiscernable**
+d'une fenêtre à jour : elle s'affiche, la galaxie tourne, les compteurs sont là.
+C'est arrivé le 22/09/2026, et ça a fait chercher un bug d'indexation pendant
+une heure. Relancer ECU par son icône remet le serveur en route.
 
 ## Dans l'application
 

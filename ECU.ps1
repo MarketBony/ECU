@@ -4,6 +4,7 @@
 #   .\ECU.ps1              ouvre ECU tout de suite, rafraichit derriere
 #   .\ECU.ps1 -Vite        ouvre ECU sans rien rafraichir du tout
 #   .\ECU.ps1 -Rafraichir  met le graphe a jour, sans ouvrir de fenetre
+#   .\ECU.ps1 -Serveur     demarre le serveur seul, sans ouvrir de fenetre
 #   .\ECU.ps1 -Arreter     arrete le serveur local
 #
 # Un service worker (donc une PWA installable) exige http:// — file:// ne suffit
@@ -15,7 +16,7 @@
 # rafraichissement tourne en tache de fond, et la page propose de se recharger
 # quand les nouvelles donnees sont pretes (elle sonde ecu/version.json).
 
-param([switch]$Vite, [switch]$Arreter, [switch]$Rafraichir, [switch]$Silencieux)
+param([switch]$Vite, [switch]$Arreter, [switch]$Rafraichir, [switch]$Serveur, [switch]$Silencieux)
 
 $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
@@ -124,6 +125,32 @@ function Raccourci-Pwa {
         Select-Object -First 1
 }
 
+# UNE seule facon de demarrer le serveur, appelee par le lancement normal comme
+# par le mode -Serveur du demarrage de session. Deux copies de cette logique
+# auraient divergé le jour ou l'une des deux apprend quelque chose — c'est
+# exactement ce qui est arrive avec la liste des projets de _layout3d.py.
+function Demarrer-Serveur {
+    if ((Serveur-Actif) -and -not (Serveur-Conforme)) {
+        Write-Host '   serveur obsolete (sans Cache-Control), remplacement...' -ForegroundColor DarkYellow
+        Arreter-Serveur | Out-Null
+        Start-Sleep -Milliseconds 400
+    }
+    if (Serveur-Actif) {
+        Write-Host "   serveur deja actif sur $Port" -ForegroundColor DarkGray
+        return $true
+    }
+    Write-Host '   demarrage du serveur...' -NoNewline
+    $p = Start-Process -FilePath $Py `
+        -ArgumentList @((Join-Path $Kb 'tools\serveur.py'), "`"$Ecu`"", "$Port") `
+        -WindowStyle Hidden -PassThru
+    $p.Id | Out-File $PidF -Encoding ascii
+    $n = 0
+    while (-not (Serveur-Actif) -and $n -lt 40) { Start-Sleep -Milliseconds 120; $n++ }
+    if (Serveur-Actif) { Write-Host ' ok' -ForegroundColor Green; return $true }
+    Write-Host ' echec' -ForegroundColor Red
+    Fin 1 "Le serveur local n a pas demarre sur le port $Port."
+}
+
 function Rafraichissement-Actif {
     if (-not (Test-Path $LockF)) { return $false }
     $id = Get-Content $LockF -ErrorAction SilentlyContinue
@@ -196,26 +223,19 @@ if (-not $Py) {
     Fin 1 'Python porteur de graphify introuvable.`n`nReinstalle avec :  uv tool install "graphifyy[all]"'
 }
 
-# ── 1. serveur local ──
-if ((Serveur-Actif) -and -not (Serveur-Conforme)) {
-    Write-Host '   serveur obsolete (sans Cache-Control), remplacement...' -ForegroundColor DarkYellow
-    Arreter-Serveur | Out-Null
-    Start-Sleep -Milliseconds 400
+# ── mode serveur seul ──
+# Pose au demarrage de session par creer-raccourci.ps1 -Demarrage. Sans lui,
+# cliquer l'application EPINGLEE ouvre Chrome sans demarrer le serveur : la PWA
+# se charge alors depuis son cache, hors ligne, a chaque fois. L'icone ECU du
+# Bureau, elle, continue de tout faire (serveur + fenetre + rafraichissement).
+if ($Serveur) {
+    if (-not $Py) { exit 1 }
+    Demarrer-Serveur | Out-Null
+    exit 0
 }
 
-if (Serveur-Actif) {
-    Write-Host "   serveur deja actif sur $Port" -ForegroundColor DarkGray
-} else {
-    Write-Host '   demarrage du serveur...' -NoNewline
-    $p = Start-Process -FilePath $Py `
-        -ArgumentList @((Join-Path $Kb 'tools\serveur.py'), "`"$Ecu`"", "$Port") `
-        -WindowStyle Hidden -PassThru
-    $p.Id | Out-File $PidF -Encoding ascii
-    $n = 0
-    while (-not (Serveur-Actif) -and $n -lt 40) { Start-Sleep -Milliseconds 120; $n++ }
-    if (Serveur-Actif) { Write-Host ' ok' -ForegroundColor Green }
-    else { Write-Host ' echec' -ForegroundColor Red; Fin 1 "Le serveur local n a pas demarre sur le port $Port." }
-}
+# ── 1. serveur local ──
+Demarrer-Serveur | Out-Null
 
 # ── 2. fenetre applicative, TOUT DE SUITE ──
 $nav = Get-Navigateur
