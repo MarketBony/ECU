@@ -13,6 +13,12 @@ param([switch]$Vite, [switch]$Arreter)
 $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
+# Louvain parcourt des ensembles de chaines dont l'ordre depend du hachage, tire
+# au sort a chaque processus : sans ca les communautes peuvent etre reattribuees
+# d'une execution a l'autre. Le hook git post-commit le pose deja ; les scripts
+# d'ECU doivent poser le meme, sinon les deux chemins ne calculent pas pareil.
+$env:PYTHONHASHSEED = '0'
+
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Ecu  = Join-Path $Kb 'ecu'
 . (Join-Path $Kb 'python.ps1')
@@ -35,12 +41,30 @@ function Serveur-Actif {
 }
 
 function Arreter-Serveur {
+    $tues = @()
+
     if (Test-Path $PidF) {
         $id = Get-Content $PidF -ErrorAction SilentlyContinue
-        if ($id) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
+        if ($id) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; $tues += [int]$id }
         Remove-Item $PidF -Force -ErrorAction SilentlyContinue
     }
-    Write-Host '  Serveur ECU arrete.' -ForegroundColor Yellow
+
+    # Le fichier PID ne connait qu'un serveur : celui du dernier demarrage. Deux
+    # lancements rapproches (double-clic) en laissent d'autres derriere, que
+    # « -Arreter » ne voyait pas — il en trainait deux depuis deux jours. On vise
+    # donc aussi les processus qui servent reellement ce port, en verifiant leur
+    # ligne de commande pour ne jamais tuer un voisin innocent.
+    Get-CimInstance Win32_Process -Filter "Name like '%python%'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match 'http\.server' -and $_.CommandLine -match "\b$Port\b" } |
+        ForEach-Object {
+            if ($tues -notcontains $_.ProcessId) {
+                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+                $tues += $_.ProcessId
+            }
+        }
+
+    if ($tues.Count) { Write-Host ("  Serveur ECU arrete ({0} processus)." -f $tues.Count) -ForegroundColor Yellow }
+    else            { Write-Host '  Aucun serveur ECU en cours.' -ForegroundColor DarkGray }
 }
 
 function Get-Navigateur {
@@ -81,10 +105,23 @@ if (-not $Vite) {
         if (Test-Path $g) { graphify global add $g --as $p.Tag *>$null; Write-Host 'ok' -ForegroundColor Green }
         else { Write-Host 'pas indexe' -ForegroundColor DarkYellow }
     }
-    Write-Host '   disposition 3D...' -NoNewline
-    & $Py (Join-Path $Kb 'tools\_layout3d.py') *>$null
-    if ($LASTEXITCODE -ne 0) { Write-Host ' echec' -ForegroundColor Red; Fin 1 }
-    Write-Host ' ok' -ForegroundColor Green
+    # La sortie du moteur est REEMISE, pas avalee. Un recalcul complet dure
+    # ~2 min (210 iterations) et l'ancienne version affichait une ligne figee
+    # sans rien d'autre : le 22/09/2026, un calcul parfaitement normal a ete
+    # pris pour un plantage. Une attente longue doit se voir travailler.
+    #
+    #   -u  : sans lui, Python met sa sortie en tampon des qu'elle part dans un
+    #         tuyau, et les 210 iterations arrivent toutes A LA FIN — ce qui
+    #         supprime precisement ce qu'on cherche a montrer.
+    #   pas de 2>&1 : sous PowerShell 5.1 il emballe chaque ligne d'erreur d'un
+    #         executable natif dans un NativeCommandError. On laisse donc stderr
+    #         filer vers la console, ou il reste visible.
+    Write-Host '   disposition 3D' -NoNewline
+    Write-Host '   (recalcul complet ~2 min si le graphe a change)' -ForegroundColor DarkGray
+    & $Py -u (Join-Path $Kb 'tools\_layout3d.py') |
+        ForEach-Object { Write-Host "      $_" -ForegroundColor DarkGray }
+    if ($LASTEXITCODE -ne 0) { Write-Host '   disposition 3D : echec' -ForegroundColor Red; Fin 1 }
+    Write-Host '   disposition 3D : ok' -ForegroundColor Green
 }
 
 # ── 2. serveur local ──

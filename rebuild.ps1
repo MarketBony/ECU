@@ -12,6 +12,11 @@ param([switch]$Complet)
 $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
+# Meme raison que dans ECU.ps1 : le hook git pose PYTHONHASHSEED=0 pour que
+# Louvain n'attribue pas les communautes differemment d'une passe a l'autre.
+# Les scripts d'ECU doivent poser le meme, sinon les deux chemins divergent.
+$env:PYTHONHASHSEED = '0'
+
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $Kb 'python.ps1')
 $Py   = Get-PythonECU

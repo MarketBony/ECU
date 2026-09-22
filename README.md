@@ -106,3 +106,10 @@ fichiers modifiés.
   explicitement.
 - L'extraction AST bascule en séquentiel sous Windows (garde `__main__` du
   multiprocessing) — plus lent, sans conséquence sur le résultat.
+- **Le recalcul de la disposition 3D prend ~2 min quand le graphe a changé.**
+  `_layout3d.py` compare l'empreinte du graphe à celle de `data.json` : si rien
+  n'a bougé il sort en une seconde (« graphe inchangé — disposition
+  conservée ») ; sinon il rejoue 210 itérations de simulation puis relit
+  l'historique git des trois dépôts. C'est normal, et la progression défile
+  maintenant à l'écran — le 22/09/2026, la version muette a fait prendre un
+  calcul parfaitement sain pour un plantage.

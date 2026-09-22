@@ -26,6 +26,11 @@ param(
 $ErrorActionPreference = 'Continue'
 $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
 
+# Meme raison que dans ECU.ps1 : le hook git pose PYTHONHASHSEED=0 pour que
+# Louvain n'attribue pas les communautes differemment d'une passe a l'autre.
+# Les scripts d'ECU doivent poser le meme, sinon les deux chemins divergent.
+$env:PYTHONHASHSEED = '0'
+
 $Kb   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Fichier = Join-Path $Kb 'projets.ps1'
 . (Join-Path $Kb 'python.ps1')
@@ -137,10 +142,14 @@ if ($txt -match [regex]::Escape($Chemin)) {
 if ($SansCarte) {
     Write-Host '  7/7  disposition 3D : ignoree' -ForegroundColor DarkGray
 } else {
-    Write-Host '  7/7  recalcul de la disposition 3D (~1 min)...' -NoNewline
-    & $Py (Join-Path $Kb 'tools\_layout3d.py') --force *>$null
-    if ($LASTEXITCODE -eq 0) { Write-Host ' ok' -ForegroundColor Green }
-    else { Write-Host ' echec' -ForegroundColor Red }
+    # --force : toujours un recalcul complet, donc toujours ~2 min. Raison de
+    # plus pour montrer la progression plutot que de l'avaler (voir ECU.ps1).
+    # -u sinon Python met sa sortie en tampon dans le tuyau et tout arrive a la fin.
+    Write-Host '  7/7  recalcul de la disposition 3D (~2 min)'
+    & $Py -u (Join-Path $Kb 'tools\_layout3d.py') --force |
+        ForEach-Object { Write-Host "         $_" -ForegroundColor DarkGray }
+    if ($LASTEXITCODE -eq 0) { Write-Host '  7/7  disposition 3D : ok' -ForegroundColor Green }
+    else { Write-Host '  7/7  disposition 3D : echec' -ForegroundColor Red }
 }
 
 Write-Host ''
