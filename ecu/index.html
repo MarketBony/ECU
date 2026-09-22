@@ -127,9 +127,23 @@ select option{background:#14141f}
   padding:5px 7px;border-radius:9px;transition:background .15s,opacity .15s;user-select:none}
 .lg:hover{background:rgba(255,255,255,.07)}
 .lg.off{opacity:.3}
+/* La pastille est une CIBLE À PART : cliquer dessus choisit la couleur, cliquer
+   la ligne filtre. Deux gestes voisins, deux effets — d'où la zone de clic
+   élargie et l'anneau au survol, sans quoi rien n'indiquerait la différence. */
 .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;
-  box-shadow:0 0 9px currentColor}
+  box-shadow:0 0 9px currentColor;cursor:pointer;
+  outline:0 solid rgba(255,255,255,.55);outline-offset:2px;transition:outline-width .13s}
+.lg:hover .dot{outline-width:1.5px}
+.dot.perso{box-shadow:0 0 9px currentColor,0 0 0 1.5px rgba(255,255,255,.75)}
 .lg .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#legende-raz{display:none;margin-top:7px;width:100%;padding:5px 9px;cursor:pointer;
+  border:1px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.05);
+  color:var(--muted);font:inherit;font-size:11px;transition:background .15s,color .15s}
+#legende-raz:hover{background:rgba(255,255,255,.1);color:var(--fg)}
+#legende-raz.show{display:block}
+#teinte{position:absolute;width:0;height:0;opacity:0;pointer-events:none;border:0}
+#btn-install{display:none}
+#btn-install.show{display:block}
 .cnt{margin-left:auto;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;flex:0 0 auto}
 
 .sw{display:flex;align-items:center;justify-content:space-between;gap:9px;
@@ -171,7 +185,13 @@ select option{background:#14141f}
 /* ── Panneau Historique ───────────────────────────────────────────
    Il se loge sous le panneau d'inspection, à droite. Replié par défaut :
    on l'ouvre quand on cherche « qu'est-ce qui a bougé », pas en continu. */
-#histo{position:fixed;right:var(--gap);bottom:56px;width:330px;
+/* Le volet s'aligne sur le bas comme #hud et #info — un 56px arbitraire le
+   laissait flotter au-dessus du bord. Mais la barre du bas est centrée et large :
+   quand l'écran est trop étroit, les deux ne peuvent pas cohabiter côte à côte.
+   ajusterHisto() (ecu.js) MESURE la barre et pose « bottom » en conséquence,
+   plutôt que de parier sur une hauteur en dur — le premier essai s'est trompé
+   de 12px et laissait un chevauchement de 3px. */
+#histo{position:fixed;right:var(--gap);bottom:var(--gap);width:330px;
   max-height:min(52vh,520px);display:none;flex-direction:column}
 #histo.show{display:flex}
 #histo.reduit{max-height:none}
@@ -195,14 +215,17 @@ select option{background:#14141f}
   -webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cm .me{font-size:10.5px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
 
-/* Bandeau de fraîcheur — le rafraîchissement tourne en tâche de fond, il faut
-   bien que la page dise quand il a fini. Sans ça on regarde un graphe périmé
-   sans le savoir, ce qui est pire que de l'attendre. */
-#maj{position:fixed;left:50%;top:var(--gap);transform:translate(-50%,-14px);
-  padding:9px 10px 9px 15px;font-size:12.5px;display:none;align-items:center;gap:12px;
-  opacity:0;transition:opacity .3s,transform .3s;z-index:5}
-#maj.show{display:flex;opacity:1;transform:translate(-50%,0)}
-#maj button{border:0;border-radius:8px;padding:5px 12px;font:inherit;font-size:12px;
+/* Signal de fraîcheur — il vit DANS la barre du bas, pas en bandeau flottant.
+   La première version barrait le haut de l'écran sur toute sa largeur pour
+   annoncer une seule chose : beaucoup de place pour peu d'information. Ici il
+   se pose là où l'œil va déjà chercher l'état (nœuds, synapses, i/s), et ne
+   prend de la place que le temps d'exister. */
+#maj{display:none;align-items:center;gap:9px;color:var(--fg)}
+#maj.show{display:flex}
+#maj .pt{width:7px;height:7px;border-radius:50%;background:var(--bony-orange);
+  box-shadow:0 0 8px var(--bony-orange);animation:respire 1.8s ease-in-out infinite}
+@keyframes respire{50%{opacity:.35}}
+#maj button{border:0;border-radius:8px;padding:3.5px 10px;font:inherit;font-size:11px;
   cursor:pointer;color:#fff;
   background:linear-gradient(95deg,rgba(247,86,50,.9),rgba(143,18,171,.9))}
 #maj button:hover{filter:brightness(1.16)}
@@ -248,11 +271,19 @@ input[type=range]:focus::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(247,86,5
   align-items:center;white-space:nowrap}
 #foot b{color:var(--fg);font-variant-numeric:tabular-nums;font-weight:600}
 #fps{font-variant-numeric:tabular-nums}
-#btn-home{border:1px solid var(--glass-border);background:rgba(255,255,255,.07);
+/* Les deux boutons de la barre partagent EXACTEMENT le même style : « Historique »
+   n'avait aucune règle et tombait sur le bouton par défaut du navigateur, gris et
+   hors charte au milieu du verre. */
+#btn-home,#btn-histo{border:1px solid var(--glass-border);background:rgba(255,255,255,.07);
   color:var(--fg);font:inherit;font-size:11.5px;padding:4px 11px;border-radius:9px;
-  cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
-#btn-home:hover{background:linear-gradient(95deg,rgba(247,86,50,.3),rgba(143,18,171,.3));
+  cursor:pointer;transition:background .15s,border-color .15s,color .15s;white-space:nowrap}
+#btn-home:hover,#btn-histo:hover{
+  background:linear-gradient(95deg,rgba(247,86,50,.3),rgba(143,18,171,.3));
   border-color:rgba(247,86,50,.45)}
+/* Ouvert : le dégradé de marque, pour qu'on sache d'où vient le volet. */
+#btn-histo.on{background:linear-gradient(95deg,rgba(247,86,50,.85),rgba(143,18,171,.85));
+  border-color:transparent;color:#fff}
+#btn-histo.on:hover{filter:brightness(1.14)}
 kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
   border-radius:5px;padding:1px 6px;font-size:10.5px;font-family:inherit}
 
@@ -283,9 +314,10 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
      tiennent pas cote a cote sous 760px ; le dernier ouvert passe devant, ce
      qui est le comportement attendu quand on vient de cliquer dessus. */
   #histo{right:var(--gap);left:var(--gap);width:auto;bottom:56px;max-height:42vh}
-  #maj{left:var(--gap);right:var(--gap);transform:none;justify-content:center}
-  #maj.show{transform:none}
   #foot{font-size:10.5px;gap:10px;padding:7px 12px}
+  /* La barre est en nowrap : sous 760px, le signal de fraîcheur la ferait
+     déborder de l'écran. Les rappels clavier ne servent à rien au doigt. */
+  #foot span:has(kbd){display:none}
   .legend{max-height:150px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -331,8 +363,10 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
         </select>
       </div>
       <div class="grp">
-        <label>Légende — clic pour filtrer</label>
+        <label>Légende — clic pour filtrer, pastille pour recolorer</label>
         <div class="legend" id="legend"></div>
+        <button id="legende-raz">↺ Couleurs d'origine</button>
+        <input id="teinte" type="color" tabindex="-1" aria-hidden="true">
       </div>
       <div class="grp">
         <label for="qualite">Qualité</label>
@@ -355,6 +389,11 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
         <div class="sw on" id="sw-inf"><span>Liens inférés</span><span class="track"><i></i></span></div>
         <div class="sw on" id="sw-spin"><span>Rotation auto</span><span class="track"><i></i></span></div>
       </div>
+      <!-- N'apparaît que si Chrome propose l'installation, c'est-à-dire tant
+           qu'ECU n'est pas installé. Une fois installé, Windows lui donne sa
+           propre entrée dans la barre des tâches, avec le logo ECU au lieu de
+           celui de Chrome — c'est la SEULE façon d'obtenir ça. -->
+      <button id="btn-install" class="act">Installer ECU comme application</button>
     </div>
   </aside>
 
@@ -379,14 +418,12 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
     <div id="hlist"></div>
   </aside>
 
-  <div id="maj" class="glass">
-    <span>Le réseau a été mis à jour</span>
-    <button id="maj-go">Recharger</button>
-  </div>
-
   <div id="foot" class="glass">
     <button id="btn-home" title="Recentrer la vue (R)">⌖ Recentrer</button>
     <button id="btn-histo" title="Historique des commits (H)">⟲ Historique</button>
+    <span id="maj" title="Le graphe a changé depuis l'ouverture de cette fenêtre">
+      <span class="pt"></span>réseau mis à jour<button id="maj-go">Recharger</button>
+    </span>
     <span><b id="n-nodes">—</b> neurones</span>
     <span><b id="n-links">—</b> synapses</span>
     <span id="fps">—</span>
@@ -408,7 +445,7 @@ kbd{background:rgba(255,255,255,.1);border:1px solid var(--glass-border);
      a jour du viewer peut ne jamais arriver a l'ecran — vu le 22/09/2026, avec
      un index.html neuf servi a cote d'un script perime. Ce numero suit celui du
      cache du service worker (sw.js) : les deux montent ensemble. -->
-<script type="module" src="ecu.js?v=7"></script>
+<script type="module" src="ecu.js?v=10"></script>
 <script>
 if ('serviceWorker' in navigator) {
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

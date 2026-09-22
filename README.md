@@ -34,10 +34,18 @@ Si l'icône n'existe pas encore :
 ```
 
 **Pour l'épingler à la barre des tâches avec le logo ECU**, il faut l'installer
-une fois comme application : dans la fenêtre, menu `⋮` → *Ouvrir dans Chrome* →
-icône d'installation dans la barre d'adresse. Sans cette étape, Windows range la
-fenêtre sous l'icône de Chrome — c'est Chrome qui décide, pas le raccourci.
-`ECU.ps1` rappelle la marche à suivre tant que ce n'est pas fait.
+une fois comme application : un bouton **« Installer ECU comme application »**
+apparaît en bas de la colonne de gauche tant que ce n'est pas fait. Un clic
+suffit.
+
+Sans cette étape, Windows range la fenêtre sous l'icône de Chrome — c'est Chrome
+qui décide, pas le raccourci. Une fois installée, `ECU.ps1` détecte le raccourci
+posé par Chrome dans `Chrome Apps` et lance l'application par son identité
+propre, ce qui lui donne son icône.
+
+Si le bouton n'obtient rien (Chrome ne propose pas toujours l'installation), le
+chemin manuel reste : menu `⋮` → *Ouvrir dans Chrome* → icône d'installation
+dans la barre d'adresse.
 
 | Commande | Effet |
 |---|---|
@@ -54,6 +62,18 @@ Un **panneau Historique** (bouton dans la barre du bas, ou touche `H`) liste les
 commits des trois projets, du plus récent au plus ancien. Cliquer un commit
 éclaire dans la galaxie les nœuds qu'il a touchés et y amène la caméra ;
 recliquer éteint. `Échap` remet tout à plat.
+
+**Couleurs de la légende.** Cliquer le *libellé* filtre, comme avant ; cliquer la
+*pastille* ouvre un sélecteur de couleur — n'importe laquelle, y compris hors
+charte Bony. Clic droit sur une pastille rend sa couleur d'origine, et un bouton
+« ↺ Couleurs d'origine » sous la légende remet tout à zéro. Un liseré blanc
+marque les entrées modifiées.
+
+**Tous les réglages sont retenus** d'une session à l'autre — mode de couleur,
+disposition, qualité, filtre d'activité, bascules de rendu, groupes masqués,
+couleurs choisies, état du panneau Historique. Recharger après une mise à jour
+ne remet donc plus rien à zéro. Ils vivent dans le stockage local du navigateur,
+sous la clé `ecu-reglages`.
 
 ## État au 22/09/2026
 

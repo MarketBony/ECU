@@ -301,6 +301,13 @@ function groupList() {
 function recolor() {
   const keys = groupList();
   colors = colorMode === 'a' ? AGES.map(a => new THREE.Color(a.c)) : palette(keys.length);
+  // Couleurs choisies à la main : elles écrasent la charte, volontairement.
+  // Indexées par LIBELLÉ et jamais par rang — Louvain renumérote les communautés
+  // à chaque recalcul, un index aurait recoloré n'importe quoi le lendemain.
+  const perso = teintes[colorMode] || {};
+  for (let i = 0; i < keys.length; i++) {
+    if (perso[keys[i]]) colors[i] = new THREE.Color(perso[keys[i]]);
+  }
   const col = nodeGeo.getAttribute('aColor');
   for (let i = 0; i < NODES.length; i++) {
     const c = colors[groupKey(NODES[i])] || colors[0];
@@ -375,15 +382,54 @@ function buildLegend() {
     const d = document.createElement('div');
     d.className = 'lg' + (hidden.has(i) ? ' off' : '');
     const c = colors[i];
-    d.innerHTML = `<span class="dot" style="background:#${c.getHexString()};color:#${c.getHexString()}"></span>
+    const perso = (teintes[colorMode] || {})[keys[i]] ? ' perso' : '';
+    d.innerHTML = `<span class="dot${perso}" title="Choisir la couleur — clic droit pour revenir à l'origine" style="background:#${c.getHexString()};color:#${c.getHexString()}"></span>
                    <span class="nm">${esc(keys[i])}</span><span class="cnt">${counts[i]}</span>`;
     d.onclick = () => {
       hidden.has(i) ? hidden.delete(i) : hidden.add(i);
       d.classList.toggle('off');
       applyDim();
+      ecrireReglages();
     };
+    // La pastille court-circuite le filtre : deux gestes voisins, deux effets.
+    const pastille = d.firstElementChild;
+    pastille.onclick = e => { e.stopPropagation(); ouvrirTeinte(keys[i], c); };
+    pastille.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); rendreTeinte(keys[i]); };
     box.appendChild(d);
   }
+  majBoutonRaz();
+}
+
+// ── Couleurs choisies à la main ────────────────────────────────────────────
+// La charte Bony tient sur un arc orange → violet ; au-delà d'une douzaine de
+// catégories, deux teintes voisines deviennent indistinguables. Pouvoir sortir
+// de l'arc n'est donc pas un caprice, c'est la seule échappatoire quand la
+// lisibilité passe avant la marque. Le choix est gardé d'une session à l'autre.
+let teinteCourante = null;
+
+function ouvrirTeinte(cle, couleurActuelle) {
+  teinteCourante = cle;
+  const inp = document.getElementById('teinte');
+  inp.value = '#' + couleurActuelle.getHexString();
+  inp.click();
+}
+
+function poserTeinte(cle, hex) {
+  (teintes[colorMode] = teintes[colorMode] || {})[cle] = hex;
+  recolor(); buildLegend(); ecrireReglages();
+}
+
+function rendreTeinte(cle) {
+  if (!teintes[colorMode] || !teintes[colorMode][cle]) return;
+  delete teintes[colorMode][cle];
+  if (!Object.keys(teintes[colorMode]).length) delete teintes[colorMode];
+  recolor(); buildLegend(); ecrireReglages();
+  toast(`« ${cle} » revient à sa couleur d'origine`);
+}
+
+function majBoutonRaz() {
+  const n = Object.values(teintes).reduce((s, o) => s + Object.keys(o).length, 0);
+  document.getElementById('legende-raz').classList.toggle('show', n > 0);
 }
 
 // ── Panneau d'inspection ───────────────────────────────────────────────────
@@ -828,9 +874,9 @@ addEventListener('keydown', e => {
 });
 
 document.getElementById('mode').onchange = e => {
-  colorMode = e.target.value; hidden.clear(); recolor(); buildLegend();
+  colorMode = e.target.value; hidden.clear(); recolor(); buildLegend(); ecrireReglages();
 };
-document.getElementById('layout').onchange = e => setLayout(e.target.value);
+document.getElementById('layout').onchange = e => { setLayout(e.target.value); ecrireReglages(); };
 
 document.getElementById('btn-path').onclick = () => {
   if (focusIdx < 0) return;
@@ -860,12 +906,15 @@ document.getElementById('q').oninput = e => {
   else { select(best); flyTo(best); }
 };
 
+const bascules = {};
 function toggle(id, key, after) {
   const b = document.getElementById(id);
+  bascules[key] = b;          // pour pouvoir les remettre comme on les a laissées
   b.onclick = () => {
     state[key] = state[key] ? 0 : 1;
     b.classList.toggle('on', !!state[key]);
     after && after();
+    ecrireReglages();
   };
 }
 toggle('sw-pulse', 'pulse');
@@ -882,6 +931,7 @@ toggle('sw-etiq', 'etiquettes');
 document.getElementById('sw-comm').onclick = function () {
   this.classList.toggle('on');
   basculerVue(this.classList.contains('on'));
+  ecrireReglages();
 };
 
 // Curseur temporel : 0 = tout, puis fenêtres de plus en plus courtes.
@@ -893,6 +943,7 @@ document.getElementById('temps').oninput = e => {
       : ageMax >= 30 ? `${Math.round(ageMax / 30)} mois`
         : `${ageMax} jours`;
   applyDim();
+  ecrireReglages();
 };
 
 // ── Qualité ────────────────────────────────────────────────────────────────
@@ -920,7 +971,9 @@ function appliquerQualite(q) {
   if (sel && sel.value !== q) sel.value = q;
 }
 
-document.getElementById('qualite').onchange = e => { autoQualite = false; appliquerQualite(e.target.value); };
+document.getElementById('qualite').onchange = e => {
+  autoQualite = false; appliquerQualite(e.target.value); ecrireReglages();
+};
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
@@ -985,6 +1038,124 @@ function loop(now) {
     fpsAcc = 0; fpsN = 0;
   }
 }
+
+// ── Réglages retenus d'une session à l'autre ───────────────────────────────
+// Recharger la page pour prendre les nouvelles données remettait TOUT à zéro :
+// mode de couleur, disposition, qualité, filtre temporel, bascules, groupes
+// masqués. Autrement dit, le bandeau « recharger » punissait celui qui l'écoute.
+// Une application ne perd pas ce qu'on vient de régler.
+const CLE_REGLAGES = 'ecu-reglages';
+let teintes = {};
+
+function lireReglages() {
+  try { return JSON.parse(localStorage.getItem(CLE_REGLAGES) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function ecrireReglages() {
+  try {
+    localStorage.setItem(CLE_REGLAGES, JSON.stringify({
+      colorMode, layout, qualite, ageMax, vueComm, teintes,
+      etats: { ...state },
+      // Les groupes masqués sont retenus par LIBELLÉ. Les index changent au
+      // prochain recalcul du graphe et masqueraient alors autre chose.
+      masques: [...hidden].map(i => groupList()[i]).filter(Boolean),
+      histo: {
+        ouvert: histoBox.classList.contains('show'),
+        reduit: histoBox.classList.contains('reduit'),
+      },
+    }));
+  } catch (e) { /* navigation privée : les réglages ne survivront pas, tant pis */ }
+}
+
+function appliquerReglages() {
+  const r = lireReglages();
+  teintes = (r.teintes && typeof r.teintes === 'object') ? r.teintes : {};
+
+  if (r.colorMode) {
+    colorMode = r.colorMode;
+    document.getElementById('mode').value = colorMode;
+  }
+  // La qualité pose state.pulse : elle passe AVANT les bascules, sinon elle
+  // écraserait le choix de l'utilisateur au lieu de lui servir de défaut.
+  if (r.qualite && QUALITES[r.qualite]) { autoQualite = false; appliquerQualite(r.qualite); }
+  if (r.layout && r.layout !== layout) {
+    document.getElementById('layout').value = r.layout;
+    setLayout(r.layout);
+  }
+  if (typeof r.ageMax === 'number' && FENETRES.includes(r.ageMax)) {
+    const curseur = document.getElementById('temps');
+    curseur.value = String(FENETRES.indexOf(r.ageMax));
+    curseur.dispatchEvent(new Event('input'));
+  }
+  if (r.etats) {
+    for (const k of Object.keys(bascules)) {
+      if (typeof r.etats[k] === 'number' && !!r.etats[k] !== !!state[k]) bascules[k].click();
+    }
+  }
+  if (r.vueComm) document.getElementById('sw-comm').click();
+
+  // Recolorer AVANT de résoudre les masques : les libellés se cherchent dans la
+  // liste du mode restauré, pas dans celle du mode par défaut.
+  recolor();
+  if (Array.isArray(r.masques) && r.masques.length) {
+    const keys = groupList();
+    hidden = new Set(r.masques.map(l => keys.indexOf(l)).filter(i => i >= 0));
+    applyDim();
+  }
+  buildLegend();
+
+  const h = r.histo || {};
+  majHisto(!!h.ouvert, !!h.reduit);
+}
+
+document.getElementById('teinte').oninput = e => {
+  if (teinteCourante !== null) poserTeinte(teinteCourante, e.target.value);
+};
+document.getElementById('legende-raz').onclick = () => {
+  teintes = {};
+  recolor(); buildLegend(); ecrireReglages();
+  toast('Toutes les couleurs sont revenues à la charte Bony');
+};
+
+// ── Installer ECU comme application ────────────────────────────────────────
+// Tant qu'ECU n'est pas installé, Chrome range sa fenêtre sous l'icône Chrome —
+// c'est Chrome qui décide, aucun réglage de raccourci ne le contourne. Chrome
+// signale lui-même qu'une installation est possible ; on transforme ce signal
+// en un bouton, au lieu d'un mode d'emploi dans une console que le lanceur
+// silencieux ne montre plus.
+let invite = null;
+const boutonInstall = document.getElementById('btn-install');
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  invite = e;
+  boutonInstall.classList.add('show');
+});
+// Filet : « beforeinstallprompt » ne se déclenche pas partout — déjà installé,
+// navigateur qui ne le gère pas, page ouverte hors du serveur local. On montre
+// quand même le bouton, qui explique alors le chemin manuel. Mieux vaut une
+// consigne visible qu'un bouton qui n'apparaît jamais.
+setTimeout(() => boutonInstall.classList.add('show'), 4000);
+
+boutonInstall.onclick = async () => {
+  if (!invite) {
+    toast('Menu ⋮ de la fenêtre → Ouvrir dans Chrome → icône d\'installation dans la barre d\'adresse');
+    return;
+  }
+  boutonInstall.disabled = true;
+  invite.prompt();
+  const { outcome } = await invite.userChoice;
+  invite = null;
+  boutonInstall.disabled = false;
+  if (outcome === 'accepted') {
+    boutonInstall.classList.remove('show');
+    toast('ECU installé — relance-le par son icône pour avoir son logo dans la barre des tâches');
+  }
+};
+addEventListener('appinstalled', () => {
+  invite = null;
+  boutonInstall.classList.remove('show');
+});
 
 // ── Historique des nœuds ───────────────────────────────────────────────────
 // Les commits des trois dépôts, fusionnés et datés par _layout3d.py. Cliquer un
@@ -1064,21 +1235,32 @@ function choisirCommit(k, el) {
 
 const histoBox = document.getElementById('histo');
 
+const boutonHisto = document.getElementById('btn-histo');
+
+/** Aligne le volet sur le bas quand la barre centrale lui laisse la place.
+ *
+ * Tout est mesuré, rien n'est supposé : la barre change de hauteur avec la
+ * densité d'écran et de largeur selon que le signal de fraîcheur est affiché.
+ * Une valeur en dur se trompait déjà de 12px au premier essai.
+ */
+function ajusterHisto() {
+  const barre = document.getElementById('foot').getBoundingClientRect();
+  const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 14;
+  const bordGauche = innerWidth - gap - (histoBox.offsetWidth || 330);
+  const cohabitent = barre.right < bordGauche - 8;
+  histoBox.style.bottom = cohabitent ? `${gap}px` : `${Math.round(gap + barre.height + 8)}px`;
+}
+addEventListener('resize', ajusterHisto);
+
 function majHisto(ouvert, reduit) {
   histoBox.classList.toggle('show', ouvert);
   histoBox.classList.toggle('reduit', reduit);
-  try { localStorage.setItem('ecu-histo', JSON.stringify({ ouvert, reduit })); }
-  catch (e) { /* navigation privée : l'état ne survit pas, tant pis */ }
+  boutonHisto.classList.toggle('on', ouvert);   // le bouton dit d'où vient le volet
+  if (ouvert) ajusterHisto();
+  ecrireReglages();
 }
 
-// Replié par défaut : l'historique s'ouvre quand on cherche « qu'est-ce qui a
-// bougé », il n'a pas à manger l'écran le reste du temps.
-let etatHisto = { ouvert: false, reduit: false };
-try { Object.assign(etatHisto, JSON.parse(localStorage.getItem('ecu-histo') || '{}')); }
-catch (e) { /* stockage illisible : on repart sur le réglage par défaut */ }
-majHisto(etatHisto.ouvert, etatHisto.reduit);
-
-document.getElementById('btn-histo').onclick =
+boutonHisto.onclick =
   () => majHisto(!histoBox.classList.contains('show'), false);
 document.getElementById('hhead').onclick =
   () => majHisto(true, !histoBox.classList.contains('reduit'));
@@ -1097,12 +1279,20 @@ function surveillerVersion() {
       const v = await (await fetch('version.json', { cache: 'no-store' })).json();
       if (!v || !v.hash) return;
       const dernier = DATA.hist && DATA.hist.length ? DATA.hist[0].h : '';
-      if (v.hash !== DATA.hash || v.dernier !== dernier) bandeau.classList.add('show');
+      if (v.hash !== DATA.hash || v.dernier !== dernier) {
+        bandeau.classList.add('show');
+        ajusterHisto();   // la barre s'élargit : le volet peut devoir remonter
+      }
     } catch (e) { /* serveur coupé ou version.json pas encore écrit : on réessaie */ }
   }, 20000);
 }
 
-build().then(() => { buildHistorique(); surveillerVersion(); requestAnimationFrame(loop); }).catch(err => {
+build().then(() => {
+  appliquerReglages();     // avant tout affichage : la galaxie apparaît déjà réglée
+  buildHistorique();
+  surveillerVersion();
+  requestAnimationFrame(loop);
+}).catch(err => {
   document.getElementById('boot').innerHTML =
     `<div class="t">ECU</div><div class="s" style="color:#f75632;max-width:420px;text-align:center">
      Échec du chargement : ${esc(err.message)}</div>`;

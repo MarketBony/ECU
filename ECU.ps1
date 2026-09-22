@@ -103,10 +103,13 @@ function Get-Navigateur {
 
 # Chrome ne donne une identite propre a une application web — sa propre icone
 # dans la barre des taches, hors du groupe Chrome — que si elle est INSTALLEE.
-# Tant qu'elle ne l'est pas, on rappelle comment faire ; ensuite on se tait.
-function Pwa-Installee {
+# A l'installation, Chrome pose lui-meme un raccourci dans « Chrome Apps » qui
+# porte le bon --app-id et le bon profil. Le lancer, c'est obtenir l'icone ECU ;
+# passer par « --app=<url> » comme avant, c'est rester groupe sous Chrome.
+function Raccourci-Pwa {
     $d = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Chrome Apps'
-    return [bool](Get-ChildItem $d -Filter '*ECU*' -ErrorAction SilentlyContinue)
+    return Get-ChildItem $d -Filter '*ECU*.lnk' -ErrorAction SilentlyContinue |
+        Select-Object -First 1
 }
 
 function Rafraichissement-Actif {
@@ -200,12 +203,18 @@ if (Serveur-Actif) {
 $nav = Get-Navigateur
 if (-not $nav) { Write-Host '  Aucun navigateur Chromium trouve.' -ForegroundColor Red; Fin 1 'Aucun navigateur Chromium trouve (Chrome ou Edge).' }
 
-Write-Host "   ouverture : $Url" -ForegroundColor Cyan
-Start-Process -FilePath $nav -ArgumentList @(
-    "--app=$Url",
-    '--window-size=1600,980',
-    '--disable-features=Translate'
-)
+$pwa = Raccourci-Pwa
+if ($pwa) {
+    Write-Host '   ouverture : application installee' -ForegroundColor Cyan
+    Start-Process -FilePath $pwa.FullName
+} else {
+    Write-Host "   ouverture : $Url" -ForegroundColor Cyan
+    Start-Process -FilePath $nav -ArgumentList @(
+        "--app=$Url",
+        '--window-size=1600,980',
+        '--disable-features=Translate'
+    )
+}
 
 # ── 3. rafraichissement, derriere ──
 if ($Vite) {
@@ -220,12 +229,12 @@ if ($Vite) {
     )
 }
 
-if (-not (Pwa-Installee)) {
+if (-not $pwa) {
     Write-Host ''
-    Write-Host '   Pour l avoir comme une vraie application (icone ECU dans la barre' -ForegroundColor DarkGray
-    Write-Host '   des taches, hors du groupe Chrome) : dans la fenetre, menu ... >' -ForegroundColor DarkGray
-    Write-Host '   Ouvrir dans Chrome > icone d installation dans la barre d adresse.' -ForegroundColor DarkGray
-    Write-Host '   A faire une seule fois.' -ForegroundColor DarkGray
+    Write-Host '   Pas encore installe : la fenetre affiche un bouton « Installer ECU' -ForegroundColor DarkGray
+    Write-Host '   comme application » en bas de la colonne de gauche. Un clic, une' -ForegroundColor DarkGray
+    Write-Host '   seule fois, et la barre des taches montrera le logo ECU au lieu de' -ForegroundColor DarkGray
+    Write-Host '   celui de Chrome.' -ForegroundColor DarkGray
 }
 Write-Host ''
 Start-Sleep -Milliseconds 900
