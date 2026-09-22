@@ -822,6 +822,9 @@ addEventListener('keydown', e => {
   if (e.key === 'Escape') clearSelection();
   // R comme recentrer — mais pas pendant qu'on tape dans la recherche
   if ((e.key === 'r' || e.key === 'R') && e.target.tagName !== 'INPUT') recentrer();
+  if ((e.key === 'h' || e.key === 'H') && e.target.tagName !== 'INPUT') {
+    majHisto(!histoBox.classList.contains('show'), false);
+  }
 });
 
 document.getElementById('mode').onchange = e => {
@@ -983,7 +986,123 @@ function loop(now) {
   }
 }
 
-build().then(() => requestAnimationFrame(loop)).catch(err => {
+// ── Historique des nœuds ───────────────────────────────────────────────────
+// Les commits des trois dépôts, fusionnés et datés par _layout3d.py. Cliquer un
+// commit éclaire les nœuds qu'il a touchés : c'est ce qui en fait un historique
+// DU RÉSEAU, et pas un journal git de plus posé à côté.
+
+/** « il y a 3 j » — la date exacte reste en infobulle, pour qui la cherche. */
+function depuis(ts) {
+  const s = Date.now() / 1000 - ts;
+  if (s < 3600) return `il y a ${Math.max(1, Math.round(s / 60))} min`;
+  if (s < 86400) return `il y a ${Math.round(s / 3600)} h`;
+  const j = Math.round(s / 86400);
+  if (j < 31) return `il y a ${j} j`;
+  if (j < 365) return `il y a ${Math.round(j / 30)} mois`;
+  return `il y a ${(j / 365).toFixed(1).replace('.', ',')} ans`;
+}
+
+const dateExacte = ts =>
+  new Date(ts * 1000).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' });
+
+let commitActif = -1;
+
+function buildHistorique() {
+  const hist = DATA.hist || [];
+  const box = document.getElementById('hlist');
+  document.getElementById('h-n').textContent = hist.length ? `${hist.length} commits` : '';
+  box.innerHTML = '';
+  if (!hist.length) {
+    box.innerHTML = '<div class="cm"><span class="co"><span class="me">Aucun commit lu — '
+      + 'relance ECU pour reconstruire l\'historique.</span></span></div>';
+    return;
+  }
+  // Une teinte par projet, indépendante du mode de couleur courant : dans
+  // l'historique la pastille veut toujours dire « quel dépôt », même quand la
+  // galaxie est colorée par ancienneté ou par communauté.
+  const teintes = palette(DATA.repos.length).map(c => '#' + c.getHexString());
+  hist.forEach((c, k) => {
+    const el = document.createElement('div');
+    el.className = 'cm';
+    const t = teintes[c.r] || '#8a8a96';
+    el.innerHTML =
+      `<span class="pt" style="background:${t};color:${t}"></span>`
+      + `<span class="co"><span class="su">${esc(c.s)}</span>`
+      + `<span class="me">${esc(DATA.repos[c.r] || 'externe')} · ${depuis(c.t)} · ${esc(c.a)}`
+      + `${c.n.length ? ' · ' + c.n.length + ' nœuds' : ''}</span></span>`;
+    el.title = `${c.h} — ${dateExacte(c.t)}`;
+    el.onclick = () => choisirCommit(k, el);
+    box.appendChild(el);
+  });
+}
+
+function choisirCommit(k, el) {
+  for (const d of document.querySelectorAll('.cm.on')) d.classList.remove('on');
+  if (commitActif === k) {            // re-cliquer éteint : pas de piège sans issue
+    commitActif = -1;
+    pathNodes = pathLinks = null;
+    applyDim();
+    return;
+  }
+  const c = DATA.hist[k];
+  commitActif = k;
+  el.classList.add('on');
+  if (!c.n.length) {
+    pathNodes = pathLinks = null; applyDim();
+    toast('Ce commit ne touche aucun nœud du réseau — document ou fichier non indexé');
+    return;
+  }
+  // On réutilise le surlignage du mode « chemin » : même attribut de shader,
+  // même remise à zéro par Échap et par clearSelection(). Rien à réinventer.
+  pathNodes = new Set(c.n);
+  pathLinks = null;
+  applyDim();
+  flyTo(c.n[0]);
+  const n = c.n.length;
+  toast(`${c.h} — ${n} nœud${n > 1 ? 's' : ''} touché${n > 1 ? 's' : ''}`);
+}
+
+const histoBox = document.getElementById('histo');
+
+function majHisto(ouvert, reduit) {
+  histoBox.classList.toggle('show', ouvert);
+  histoBox.classList.toggle('reduit', reduit);
+  try { localStorage.setItem('ecu-histo', JSON.stringify({ ouvert, reduit })); }
+  catch (e) { /* navigation privée : l'état ne survit pas, tant pis */ }
+}
+
+// Replié par défaut : l'historique s'ouvre quand on cherche « qu'est-ce qui a
+// bougé », il n'a pas à manger l'écran le reste du temps.
+let etatHisto = { ouvert: false, reduit: false };
+try { Object.assign(etatHisto, JSON.parse(localStorage.getItem('ecu-histo') || '{}')); }
+catch (e) { /* stockage illisible : on repart sur le réglage par défaut */ }
+majHisto(etatHisto.ouvert, etatHisto.reduit);
+
+document.getElementById('btn-histo').onclick =
+  () => majHisto(!histoBox.classList.contains('show'), false);
+document.getElementById('hhead').onclick =
+  () => majHisto(true, !histoBox.classList.contains('reduit'));
+
+// ── Signal de fraîcheur ────────────────────────────────────────────────────
+// ECU s'ouvre tout de suite sur le dernier état connu et le rafraîchissement
+// tourne derrière (voir ECU.ps1). Sans ce sondage on lirait un graphe périmé
+// sans jamais le savoir : c'est la panne invisible du piège n°8 du plan.
+// On compare DEUX champs — l'empreinte du graphe ET le dernier commit — parce
+// qu'un commit de documents seuls change l'historique sans changer le graphe.
+function surveillerVersion() {
+  const bandeau = document.getElementById('maj');
+  document.getElementById('maj-go').onclick = () => location.reload();
+  setInterval(async () => {
+    try {
+      const v = await (await fetch('version.json', { cache: 'no-store' })).json();
+      if (!v || !v.hash) return;
+      const dernier = DATA.hist && DATA.hist.length ? DATA.hist[0].h : '';
+      if (v.hash !== DATA.hash || v.dernier !== dernier) bandeau.classList.add('show');
+    } catch (e) { /* serveur coupé ou version.json pas encore écrit : on réessaie */ }
+  }, 20000);
+}
+
+build().then(() => { buildHistorique(); surveillerVersion(); requestAnimationFrame(loop); }).catch(err => {
   document.getElementById('boot').innerHTML =
     `<div class="t">ECU</div><div class="s" style="color:#f75632;max-width:420px;text-align:center">
      Échec du chargement : ${esc(err.message)}</div>`;

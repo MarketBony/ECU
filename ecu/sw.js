@@ -2,11 +2,13 @@
  * Tout est servi depuis le cache : l'application fonctionne hors-ligne, et le
  * réseau n'est sollicité que pour rafraîchir data.json en arrière-plan.
  */
-const CACHE = 'ecu-v6';
+const CACHE = 'ecu-v7';
 const COQUILLE = [
   './',
   './index.html',
-  './ecu.js',
+  './ecu.js?v=7',   // doit suivre EXACTEMENT le src d'index.html, sinon on
+                    // precharge une URL que la page ne demande jamais
+
   './data.json',
   './logo.svg',
   './logo-maskable.svg',
@@ -38,6 +40,15 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
+
+  // version.json : JAMAIS de cache. C'est le signal de fraîcheur, sondé toutes
+  // les 20 s pendant que le rafraîchissement tourne en tâche de fond. Une
+  // réponse servie depuis le cache figerait l'application sur la première
+  // version vue, et le bandeau « nouvelles données » n'apparaîtrait jamais.
+  if (new URL(req.url).pathname.endsWith('/version.json')) {
+    e.respondWith(fetch(req, { cache: 'no-store' }).catch(() => Response.json({})));
+    return;
+  }
 
   // data.json : le réseau d'abord, pour repartir sur un graphe à jour après un
   // commit ; le cache prend le relais hors-ligne.

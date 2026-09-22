@@ -66,6 +66,87 @@ def dates_par_fichier(depot):
     return out
 
 
+def commits_recents(depot, n=40):
+    """Les n derniers commits d'un depot, avec les fichiers que chacun touche.
+
+    Meme forme que dates_par_fichier : un seul appel a git, et un depot
+    injoignable rend une liste vide plutot que de faire echouer tout le rendu.
+    \\x1e separe les commits et \\x1f les champs : aucun des deux ne peut
+    apparaitre dans un message de commit, contrairement a « | » ou « ; ».
+    """
+    out = []
+    try:
+        p = subprocess.run(
+            ['git', '-C', depot, 'log', '--no-merges', f'-n{n}',
+             '--format=\x1e%h\x1f%ct\x1f%an\x1f%s', '--name-only'],
+            capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace')
+    except (OSError, subprocess.SubprocessError):
+        return out
+    if p.returncode != 0:
+        return out
+    for bloc in p.stdout.split('\x1e'):
+        if not bloc.strip():
+            continue
+        lignes = bloc.splitlines()
+        tete = lignes[0].split('\x1f')
+        if len(tete) < 4:
+            continue
+        try:
+            ts = int(tete[1])
+        except ValueError:
+            continue
+        out.append({
+            'h': tete[0],
+            't': ts,
+            'a': tete[2],
+            's': '\x1f'.join(tete[3:])[:120],
+            'fichiers': [l.replace('\\', '/') for l in lignes[1:] if l],
+        })
+    return out
+
+
+def historique(depots, repos, noeuds_par_fichier, n=40):
+    """Les commits des trois depots fusionnes, du plus recent au plus ancien.
+
+    Chaque commit porte les INDEX des noeuds qu'il a touches, pour que le
+    viewer puisse les eclairer sans rien recalculer. Le nombre est borne : un
+    commit de reformatage touche des centaines de noeuds et ferait grossir
+    data.json pour une surbrillance illisible.
+    """
+    tout = []
+    for tag, chemin in depots.items():
+        r = repos.index(tag) if tag in repos else -1
+        for c in commits_recents(chemin, n):
+            noeuds = []
+            for f in c.pop('fichiers'):
+                noeuds.extend(noeuds_par_fichier.get((tag, f), ()))
+            c['r'] = r
+            c['n'] = sorted(set(noeuds))[:80]
+            tout.append(c)
+    tout.sort(key=lambda c: -c['t'])
+    return tout
+
+
+def ecrire_version(empreinte, hist):
+    """Signal de fraicheur, lu par le viewer pour proposer un rechargement.
+
+    Tient dans un fichier minuscule expres : il est sonde toutes les 20 s, la
+    ou data.json pese 700 Ko. C'est aussi le version.json que reclame le piege
+    n°8 de PLAN-ECU-GITHUB.md pour la CI, ecrit ici au meme format.
+
+    « dernier » est indispensable en plus de l'empreinte : un commit qui ne
+    touche que des documents ne cree aucun noeud, donc l'empreinte du graphe ne
+    bouge pas — et le viewer resterait sur un historique perime sans jamais
+    savoir qu'il l'est.
+    """
+    OUT.with_name('version.json').write_text(json.dumps({
+        'hash': empreinte,
+        'dernier': hist[0]['h'] if hist else '',
+        'date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'commits': len(hist),
+    }, ensure_ascii=False), encoding='utf-8')
+
+
 def force_dirigee(n, aretes, masse, iterations=210, seed=SEED):
     """Fruchterman-Reingold 3D vectorise, avec masse par noeud.
 
@@ -186,19 +267,37 @@ brut = SRC.read_bytes()
 empreinte = hashlib.sha1(brut).hexdigest()[:16]
 FORCE = '--force' in sys.argv
 
-if OUT.is_file() and not FORCE:
-    try:
-        if json.loads(OUT.read_text(encoding='utf-8')).get('hash') == empreinte:
-            print(f'graphe inchange ({empreinte}) — disposition conservee')
-            raise SystemExit(0)
-    except (ValueError, KeyError):
-        pass
-
 g = json.loads(brut.decode('utf-8'))
 raw_nodes = g['nodes']
 raw_links = g['links']
 index = {n['id']: i for i, n in enumerate(raw_nodes)}
 N = len(raw_nodes)
+
+# Quels noeuds vivent dans quel fichier. Sert a l'historique, et c'est la meme
+# cle (depot, chemin normalise) que celle des dates plus bas.
+noeuds_par_fichier = {}
+for i, n in enumerate(raw_nodes):
+    sf = (n.get('source_file') or '').replace('\\', '/')
+    if sf:
+        noeuds_par_fichier.setdefault((n.get('repo'), sf), []).append(i)
+
+# Le graphe peut n'avoir pas bouge alors que des commits sont arrives : un
+# commit qui ne touche que des documents ne cree aucun noeud. On refait donc
+# TOUJOURS l'historique — trois « git log », une fraction de seconde — et on ne
+# saute que les 210 iterations de simulation, qui sont le vrai cout.
+if OUT.is_file() and not FORCE:
+    try:
+        deja = json.loads(OUT.read_text(encoding='utf-8'))
+    except ValueError:
+        deja = None
+    if deja and deja.get('hash') == empreinte:
+        print(f'graphe inchange ({empreinte}) — disposition conservee')
+        deja['hist'] = historique(DEPOTS, deja.get('repos') or [], noeuds_par_fichier)
+        OUT.write_text(json.dumps(deja, ensure_ascii=False, separators=(',', ':')),
+                       encoding='utf-8')
+        ecrire_version(empreinte, deja['hist'])
+        print(f"historique rafraichi : {len(deja['hist'])} commits")
+        raise SystemExit(0)
 
 paires = []
 for l in raw_links:
@@ -372,11 +471,15 @@ for c in range(NC):
 comm_links = [[a, b, w] for (a, b), w in sorted(poids_ct.items(), key=lambda kv: -kv[1])]
 print(f'vue communautes : {NC} noeuds, {len(comm_links)} liens agreges')
 
+hist = historique(DEPOTS, repos, noeuds_par_fichier)
+print(f'historique : {len(hist)} commits')
+
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps({
     'hash': empreinte, 'nodes': nodes_out, 'links': links_out,
     'repos': repos, 'types': types, 'comms': comms,
-    'commNodes': comms_out, 'commLinks': comm_links,
+    'commNodes': comms_out, 'commLinks': comm_links, 'hist': hist,
 }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+ecrire_version(empreinte, hist)
 print(f'{OUT} — {OUT.stat().st_size/1024:.0f} Ko · {len(nodes_out)} noeuds · {len(links_out)} liens'
       f' · empreinte {empreinte}')

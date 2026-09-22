@@ -11,21 +11,58 @@ Graphe de connaissance unifié des projets du groupe Bony auto-mobile, construit
 | Fichier | Rôle |
 |---|---|
 | `global-graph.json` | Le graphe unifié — c'est lui qu'on interroge |
-| `carte-3d.html` | **Carte 3D interactive** — raccourci « Réseau MarketBony » sur le Bureau |
+| `ecu/` | **L'application 3D** — `index.html`, `ecu.js`, `data.json`, icônes |
 | `graph.html` | Carte 2D d'origine de graphify |
 | `projets.ps1` | La liste des projets branchés — **le seul fichier à éditer** |
-| `carte.ps1` | Rafraîchit le code puis ouvre la carte 3D |
+| `ECU.ps1` | Ouvre ECU et rafraîchit le graphe derrière |
+| `ecu-silencieux.vbs` | Ce que lance le raccourci : `ECU.ps1` sans aucune console |
+| `creer-raccourci.ps1` | Pose l'icône ECU sur le Bureau — **à lancer une fois** |
 | `nouveau-projet.ps1` | Branche un nouveau projet Bony sur le réseau |
 | `rebuild.ps1` | Reconstruit tout depuis les dossiers de travail |
+| `tools/` | Le moteur : `_layout3d.py` et les dix autres scripts |
 
-## État au 20/09/2026
+## Lancer ECU
+
+Double-clic sur l'icône **ECU** du Bureau. La fenêtre s'ouvre en quelques
+secondes sur le dernier état connu ; le graphe se met à jour **derrière**, et la
+page propose de se recharger quand c'est prêt.
+
+Si l'icône n'existe pas encore :
+
+```powershell
+.\creer-raccourci.ps1
+```
+
+**Pour l'épingler à la barre des tâches avec le logo ECU**, il faut l'installer
+une fois comme application : dans la fenêtre, menu `⋮` → *Ouvrir dans Chrome* →
+icône d'installation dans la barre d'adresse. Sans cette étape, Windows range la
+fenêtre sous l'icône de Chrome — c'est Chrome qui décide, pas le raccourci.
+`ECU.ps1` rappelle la marche à suivre tant que ce n'est pas fait.
+
+| Commande | Effet |
+|---|---|
+| `.\ECU.ps1` | ouvre, puis rafraîchit en arrière-plan |
+| `.\ECU.ps1 -Vite` | ouvre sans rien rafraîchir |
+| `.\ECU.ps1 -Rafraichir` | met à jour le graphe sans ouvrir de fenêtre |
+| `.\ECU.ps1 -Arreter` | arrête le serveur local |
+
+Journal du rafraîchissement de fond : `~/.cache/ecu-rafraichissement.log`.
+
+## Dans l'application
+
+Un **panneau Historique** (bouton dans la barre du bas, ou touche `H`) liste les
+commits des trois projets, du plus récent au plus ancien. Cliquer un commit
+éclaire dans la galaxie les nœuds qu'il a touchés et y amène la caméra ;
+recliquer éteint. `Échap` remet tout à plat.
+
+## État au 22/09/2026
 
 | Projet | Dossier de travail | Nœuds |
 |---|---|---:|
 | gearbox | `Documents\gearbox3backup` | 1 638 |
 | GRID | `Documents\RELTEL` | 1 434 |
-| Forum-2026 | `Documents\APP FORUM` | 565 |
-| **Global** | — | **3 663 nœuds, 6 973 arêtes** |
+| Forum-2026 | `Documents\APP FORUM` | 581 |
+| **Global** | — | **3 679 nœuds, 6 986 arêtes** |
 
 Les 3 projets ont la passe **code + documents**.
 `clutch-press-review` a été retiré du réseau (projet obsolète).
