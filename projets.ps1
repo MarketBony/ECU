@@ -8,5 +8,6 @@ $global:ProjetsBony = @(
     @{ Tag = 'gearbox';    Chemin = 'C:\Users\Operateur\Documents\gearbox3backup' },
     @{ Tag = 'GRID';       Chemin = 'C:\Users\Operateur\Documents\RELTEL'         },
     @{ Tag = 'Forum-2026'; Chemin = 'C:\Users\Operateur\Documents\APP FORUM'      },
-    @{ Tag = 'partenariat-bony-limagrain'; Chemin = 'C:\Users\Operateur\Documents\Partenariat Bony x Limagrain' }
+    @{ Tag = 'partenariat-bony-limagrain'; Chemin = 'C:\Users\Operateur\Documents\Partenariat Bony x Limagrain' },
+    @{ Tag = 'ECU'; Chemin = 'C:\Users\Operateur\Documents\ECU' }
 )

@@ -1,0 +1,26 @@
+# Ce qu'ECU ne doit PAS indexer de lui-même.
+#
+# ECU est un projet comme un autre, à une différence près : il ÉCRIT DANS SON
+# PROPRE DOSSIER. `ecu/data.json` (730 Ko) est réécrit à chaque lancement de
+# l'application. Sans ce fichier, chaque lancement modifierait un fichier
+# indexé, donc changerait l'empreinte du graphe, donc déclencherait un recalcul
+# complet de deux minutes — à chaque lancement, et la galaxie se réorganiserait
+# à chaque fois. ECU courrait après sa propre queue, indéfiniment.
+#
+# Le .gitignore ne pouvait pas servir à ça : ces fichiers sont VERSIONNÉS, donc
+# jamais ignorés par git. D'où ce fichier, propre à graphify.
+
+# ── Sorties du moteur : elles SONT le graphe, les indexer est circulaire ──
+global-graph.json
+graph.html
+ecu/data.json
+ecu/version.json
+graphify-out/
+
+# ── Dépendance tierce, minifiée : des centaines de nœuds sans aucun sens ──
+ecu/vendor/
+
+# ── Icônes : toutes dérivées de logo.svg, aucune connaissance à en tirer ──
+ecu/*.png
+ecu/*.ico
+ecu/logo-maskable.svg

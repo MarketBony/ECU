@@ -1,2 +1,15 @@
-graphify-out/cost.json
-graphify-out/cache/
+# L'index que graphify pose dans ce dépôt. Il se reconstruit tout seul à chaque
+# commit (hook post-commit) et ne doit jamais partir dans un commit : 463 Ko
+# aujourd'hui, et il grossit à chaque passe. Même règle que pour les trois
+# autres dépôts Bony — l'exclusion ne doit pas dépendre de la vigilance.
+#
+# Ce qui s'y trouve et ne se recalcule pas gratuitement, c'est graph.json : il
+# porte les nœuds issus des DOCUMENTS, payés en tokens une fois. Une copie
+# fraîche du dépôt repart donc avec le code seul, et il faut relancer
+# `/graphify .` pour retrouver le sens. C'est assumé, et c'est le même
+# compromis que sur gearbox, GRID et Forum-2026.
+graphify-out/
+
+# Ne pas confondre avec .graphifyignore, à côté : celui-là dit à graphify quoi
+# ne PAS lire, et lui est versionné — c'est lui qui empêche ECU de s'indexer
+# en boucle sur les fichiers qu'il réécrit à chaque lancement.
