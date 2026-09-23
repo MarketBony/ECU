@@ -47,27 +47,41 @@ Si le bouton n'obtient rien (Chrome ne propose pas toujours l'installation), le
 chemin manuel reste : menu `⋮` → *Ouvrir dans Chrome* → icône d'installation
 dans la barre d'adresse.
 
-**Une fois épinglée, l'application a besoin d'un serveur qui tourne.** Cliquer
-l'icône épinglée ouvre Chrome directement, sans passer par `ECU.ps1` : le
-service worker sert alors l'application depuis son cache, hors ligne. D'où
-l'entrée de démarrage, à poser une fois :
+**Une fois installée, l'application s'ouvre de trois endroits qui ne démarrent
+PAS le serveur** : le raccourci « ECU — Engine Control Unit » que Chrome pose sur
+le Bureau, son entrée dans le menu Démarrer (« Applications Chrome »), et l'icône
+épinglée. C'est Chrome qui les lance, sans passer par `ECU.ps1`. D'où une tâche
+planifiée qui garde le serveur debout, à poser une fois :
 
 ```powershell
 .\creer-raccourci.ps1 -Demarrage
 ```
 
-Elle lance le serveur seul à chaque ouverture de session — aucune fenêtre, aucun
-calcul. Le rafraîchissement du graphe reste déclenché par l'icône ECU du Bureau,
-parce que personne ne veut deux minutes de calcul au logon.
+La tâche « ECU - serveur » tourne à l'ouverture de session **et toutes les 10
+minutes** ; elle ne fait rien si le serveur tourne déjà, et le relève s'il est
+tombé. Lancée par le Planificateur, elle vit hors de toute session Claude.
+
+| Icône | Serveur | Rafraîchit le graphe |
+|---|---|---|
+| **ECU** (Bureau ou menu Démarrer) — le lanceur | oui | **oui** |
+| **ECU — Engine Control Unit** (posée par Chrome), icône épinglée | par la tâche | non |
+
+Le rafraîchissement reste le fait du lanceur « ECU », parce que personne ne veut
+deux minutes de calcul à chaque ouverture ni en tâche de fond permanente. Ouvrir
+par l'icône de Chrome montre donc l'état du dernier rafraîchissement.
+
+> Historique : la première version posait un raccourci dans le dossier
+> Démarrage. Il ne joue qu'à l'ouverture de session — et le 23/09/2026 la machine
+> tournait sans redémarrer depuis une semaine : il n'avait jamais servi.
 
 | Commande | Effet |
 |---|---|
 | `.\ECU.ps1` | ouvre, puis rafraîchit en arrière-plan |
 | `.\ECU.ps1 -Vite` | ouvre sans rien rafraîchir |
 | `.\ECU.ps1 -Rafraichir` | met à jour le graphe sans ouvrir de fenêtre |
-| `.\ECU.ps1 -Serveur` | démarre le serveur seul, sans fenêtre |
+| `.\ECU.ps1 -Serveur` | démarre le serveur seul, sans fenêtre (c'est ce que lance la tâche planifiée) |
 | `.\ECU.ps1 -Arreter` | arrête le serveur local |
-| `.\creer-raccourci.ps1 -Retirer` | enlève les deux raccourcis |
+| `.\creer-raccourci.ps1 -Retirer` | enlève les raccourcis ECU et la tâche planifiée |
 
 Journal du rafraîchissement de fond : `~/.cache/ecu-rafraichissement.log`.
 

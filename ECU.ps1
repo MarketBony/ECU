@@ -39,6 +39,16 @@ $LockF = Join-Path $env:TEMP 'ecu-rafraichissement.pid'
 $Journal = Join-Path $env:USERPROFILE '.cache\ecu-rafraichissement.log'
 
 function Fin($code, $message) {
+    # Mode -Serveur : lance par une tache planifiee TOUTES LES 10 MINUTES. Une
+    # boite de dialogue par echec en empilerait six par heure sur l'ecran. On
+    # consigne donc dans un journal et on sort : l'application, elle, affiche
+    # deja « serveur arrete » — la panne reste visible, sans harceler.
+    if ($code -ne 0 -and $Serveur) {
+        $j = Join-Path $env:USERPROFILE '.cache\ecu-serveur.log'
+        New-Item -ItemType Directory -Force -Path (Split-Path $j) -ErrorAction SilentlyContinue | Out-Null
+        "$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))  echec : $message" | Add-Content -Path $j -Encoding ascii
+        exit $code
+    }
     if ($code -ne 0) {
         # Lance depuis le raccourci, ce script n'a aucune console : un Read-Host
         # y attendrait une touche que personne ne peut taper, et le processus
