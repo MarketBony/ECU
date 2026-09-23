@@ -30,17 +30,66 @@ $env:PYTHONHASHSEED = '0'
 $Moi  = $MyInvocation.MyCommand.Path
 $Kb   = Split-Path -Parent $Moi
 $Ecu  = Join-Path $Kb 'ecu'
-. (Join-Path $Kb 'python.ps1')
-$Py   = Get-PythonECU
 $Port = 7420
 $Url  = "http://127.0.0.1:$Port/index.html"
 $PidF = Join-Path $env:TEMP 'ecu-serveur.pid'
 $LockF = Join-Path $env:TEMP 'ecu-rafraichissement.pid'
+$EchecF = Join-Path $env:TEMP 'ecu-rafraichissement.echec'
 $Journal = Join-Path $env:USERPROFILE '.cache\ecu-rafraichissement.log'
 
+# ── La veille : ce que la tache planifiee verifie toutes les 2 minutes ──
+#
+# POURQUOI. Jusqu'au 23/09/2026, seul le lanceur « ECU » recalculait la galaxie.
+# Or on ouvre ECU par l'icone de Chrome, qui ne recalcule rien : Theo a commite
+# dans gearbox a 17:04, le hook a mis l'index de gearbox a jour a 17:05 — et la
+# galaxie est restee a 12:04. Aucun bouton « Recharger » ne pouvait apparaitre,
+# puisqu'il n'y avait jamais de nouvelles donnees. Le graphe doit suivre les
+# commits tout seul, quelle que soit l'icone.
+#
+# Ces trois fonctions n'ont besoin NI de Python NI d'un reseau : la tache tourne
+# toutes les 2 minutes, et dans l'immense majorite des cas elle doit sortir en
+# une fraction de seconde. D'ou leur place ici, AVANT la recherche de Python.
+
+function Port-Ouvert {
+    $c = New-Object Net.Sockets.TcpClient
+    try {
+        $a = $c.BeginConnect('127.0.0.1', $Port, $null, $null)
+        return ($a.AsyncWaitHandle.WaitOne(400) -and $c.Connected)
+    } catch { return $false } finally { $c.Close() }
+}
+
+# La galaxie est perimee si un projet a bouge depuis son calcul : un commit, un
+# pull ou un checkout touchent .git\logs\HEAD ; une passe documents touche
+# graphify-out\graph.json. On compare aux dates, sans lancer git.
+function Graphe-Perime {
+    $ref = Join-Path $Ecu 'data.json'
+    if (-not (Test-Path $ref)) { return $true }
+    $t = (Get-Item $ref).LastWriteTimeUtc
+    . (Join-Path $Kb 'projets.ps1')
+    foreach ($p in $global:ProjetsBony) {
+        foreach ($f in (Join-Path $p.Chemin '.git\logs\HEAD'), (Join-Path $p.Chemin 'graphify-out\graph.json')) {
+            if ((Test-Path $f) -and (Get-Item $f).LastWriteTimeUtc -gt $t) { return $true }
+        }
+    }
+    return $false
+}
+
+# Un rafraichissement qui echoue laisse la galaxie perimee : sans garde-fou, la
+# veille le relancerait toutes les 2 minutes, a vide, indefiniment. On attend
+# donc 10 minutes apres un echec. Un succes efface la marque.
+function Echec-Recent {
+    if (-not (Test-Path $EchecF)) { return $false }
+    return ((Get-Date) - (Get-Item $EchecF).LastWriteTime).TotalMinutes -lt 10
+}
+
+if ($Serveur -and (Port-Ouvert) -and -not ((Graphe-Perime) -and -not (Echec-Recent))) { exit 0 }
+
+. (Join-Path $Kb 'python.ps1')
+$Py   = Get-PythonECU
+
 function Fin($code, $message) {
-    # Mode -Serveur : lance par une tache planifiee TOUTES LES 10 MINUTES. Une
-    # boite de dialogue par echec en empilerait six par heure sur l'ecran. On
+    # Mode -Serveur : lance par une tache planifiee TOUTES LES 2 MINUTES. Une
+    # boite de dialogue par echec en empilerait trente par heure a l'ecran. On
     # consigne donc dans un journal et on sort : l'application, elle, affiche
     # deja « serveur arrete » — la panne reste visible, sans harceler.
     if ($code -ne 0 -and $Serveur) {
@@ -224,11 +273,14 @@ if ($Arreter) { Arreter-Serveur; exit 0 }
 # C'est ce que le lancement normal relance en tache de fond. Comme personne ne
 # regarde, la sortie part dans un journal : une panne silencieuse doit rester
 # diagnosticable apres coup.
-if ($Rafraichir) {
-    if (Rafraichissement-Actif) { exit 0 }
-    if (-not $Py) { exit 1 }
+# Le rafraichissement journalise, sous verrou. UNE seule facon de le lancer,
+# qu'il vienne du lanceur « ECU » (en tache de fond) ou de la veille planifiee.
+function Rafraichir-Journalise {
+    if (Rafraichissement-Actif) { return $true }
+    if (-not $Py) { return $false }
     $PID | Out-File $LockF -Encoding ascii
     New-Item -ItemType Directory -Force -Path (Split-Path $Journal) -ErrorAction SilentlyContinue | Out-Null
+    $ok = $false
     try {
         Start-Transcript -Path $Journal -Force -ErrorAction SilentlyContinue | Out-Null
         $ok = Rafraichir-Graphe
@@ -236,7 +288,13 @@ if ($Rafraichir) {
     } finally {
         Remove-Item $LockF -Force -ErrorAction SilentlyContinue
     }
-    if ($ok) { exit 0 } else { exit 1 }
+    if ($ok) { Remove-Item $EchecF -Force -ErrorAction SilentlyContinue }
+    else     { Get-Date | Out-File $EchecF -Encoding ascii }
+    return $ok
+}
+
+if ($Rafraichir) {
+    if (Rafraichir-Journalise) { exit 0 } else { exit 1 }
 }
 
 Write-Host ''
@@ -260,6 +318,10 @@ if (-not $Py) {
 if ($Serveur) {
     if (-not $Py) { exit 1 }
     Demarrer-Serveur | Out-Null
+    # La veille (voir en tete) : un projet a bouge depuis le dernier calcul, on
+    # recalcule. Les donnees servies suivent ainsi les commits a deux minutes
+    # pres, quelle que soit l'icone par laquelle ECU est ouvert.
+    if ((Graphe-Perime) -and -not (Echec-Recent)) { Rafraichir-Journalise | Out-Null }
     exit 0
 }
 

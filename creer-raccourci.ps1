@@ -64,9 +64,10 @@ if ($Demarrage) {
     # temps, les trois icones de l'application installee (Bureau, menu
     # Demarrer, barre des taches) l'ouvraient sans serveur, hors ligne.
     #
-    # La tache s'execute a l'ouverture de session PUIS toutes les 10 minutes.
-    # ECU.ps1 -Serveur ne fait rien si le serveur tourne deja : la repetition
-    # ne coute qu'un test de port, et elle releve le serveur s'il est tombe.
+    # La tache s'execute a l'ouverture de session PUIS toutes les 2 minutes.
+    # ECU.ps1 -Serveur releve le serveur s'il est tombe, et RECALCULE la
+    # galaxie si un projet a bouge depuis (commit, pull, passe documents).
+    # Sans rien a faire, il sort en une fraction de seconde, sans Python.
     # Lancee par le Planificateur de taches, elle vit hors de toute session
     # Claude — un serveur demarre depuis une session meurt avec elle.
     $moi       = "$env:USERDOMAIN\$env:USERNAME"
@@ -80,15 +81,15 @@ if ($Demarrage) {
     # le serveur sans attendre dix minutes apres un redemarrage.
     $trigger   = @(
         (New-ScheduledTaskTrigger -AtLogOn -User $moi),
-        (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10))
+        (New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 2))
     )
     $reglages  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
                    -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
     $principal = New-ScheduledTaskPrincipal -UserId $moi -LogonType Interactive -RunLevel Limited
     Register-ScheduledTask -TaskName $nomTache -Action $action -Trigger $trigger -Settings $reglages `
         -Principal $principal -Force `
-        -Description 'Garde le serveur local d ECU en marche : ouverture de session, puis toutes les 10 min.' | Out-Null
-    Write-Output "  cree    tache planifiee '$nomTache' (ouverture de session + toutes les 10 min)"
+        -Description 'ECU : garde le serveur en marche et recalcule la galaxie apres chaque commit. Toutes les 2 min.' | Out-Null
+    Write-Output "  cree    tache planifiee '$nomTache' (ouverture de session + toutes les 2 min)"
 
     # L'ancien raccourci du dossier Demarrage fait desormais double emploi.
     if (Test-Path $cibleSrv) { Remove-Item $cibleSrv -Force; Write-Output "  retire  $cibleSrv (remplace par la tache)" }
@@ -96,7 +97,8 @@ if ($Demarrage) {
     Start-ScheduledTask -TaskName $nomTache
     Write-Output '  tache declenchee : le serveur demarre maintenant, hors de toute session.'
     Write-Output ''
-    Write-Output '  Toutes les icones ECU fonctionnent desormais, epinglee comprise.'
+    Write-Output '  Toutes les icones ECU fonctionnent desormais, epinglee comprise, et la'
+    Write-Output '  galaxie suit les commits de chaque projet a deux minutes pres.'
     Write-Output '  Pour l''enlever :  .\creer-raccourci.ps1 -Retirer'
     Write-Output ''
     return

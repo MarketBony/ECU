@@ -22,12 +22,21 @@ de « push » :
 | Quoi | Mis à jour par | Quand |
 |---|---|---|
 | L'index **du projet** (`<projet>\graphify-out\graph.json`) | le hook `post-commit` | à chaque commit, tout seul, gratuit |
-| Le **graphe global** (`~\.graphify\global-graph.json`) | `ECU.ps1` | à chaque lancement d'ECU (ou `ECU.ps1 -Rafraichir`) |
-| La **galaxie** (`ECU\ecu\data.json`) | `ECU.ps1` | idem |
+| Le **graphe global** (`~\.graphify\global-graph.json`) | la tâche planifiée « ECU - serveur » | **dans les 2 minutes** qui suivent un commit, un pull ou une passe documents |
+| La **galaxie** et l'**historique** (`ECU\ecu\data.json`) | idem | idem |
 
-Le hook ne touche **que** l'index du projet. Entre deux lancements d'ECU, le
-graphe global a donc un peu de retard sur le code : c'est normal et sans danger,
-ECU rattrape tout au lancement suivant.
+Le hook ne touche **que** l'index du projet. C'est la tâche planifiée qui fait le
+reste : toutes les 2 minutes, elle compare la date de la galaxie à celle du
+dernier commit de chaque projet (`.git\logs\HEAD`) et de chaque index ; si
+quelque chose est plus récent, elle recalcule. Sinon elle sort en une fraction
+de seconde, sans lancer Python.
+
+Une fenêtre ECU **cachée** (derrière l'éditeur, réduite) se recharge alors toute
+seule ; une fenêtre **visible** affiche « réseau mis à jour — Recharger ».
+
+> Les commits de **fusion** n'apparaissent pas dans l'historique (`git log
+> --no-merges`) : ils ne font que répéter le contenu des commits qu'ils fusionnent,
+> et ceux-là y sont.
 
 ### Où vit quoi
 

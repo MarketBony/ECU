@@ -57,18 +57,20 @@ planifiée qui garde le serveur debout, à poser une fois :
 .\creer-raccourci.ps1 -Demarrage
 ```
 
-La tâche « ECU - serveur » tourne à l'ouverture de session **et toutes les 10
-minutes** ; elle ne fait rien si le serveur tourne déjà, et le relève s'il est
-tombé. Lancée par le Planificateur, elle vit hors de toute session Claude.
+La tâche « ECU - serveur » tourne à l'ouverture de session **et toutes les 2
+minutes**. Elle relève le serveur s'il est tombé, et **recalcule la galaxie dès
+qu'un projet a bougé** — commit, pull, passe documents. Sans rien à faire, elle
+sort en une fraction de seconde. Lancée par le Planificateur, elle vit hors de
+toute session Claude.
 
-| Icône | Serveur | Rafraîchit le graphe |
-|---|---|---|
-| **ECU** (Bureau ou menu Démarrer) — le lanceur | oui | **oui** |
-| **ECU — Engine Control Unit** (posée par Chrome), icône épinglée | par la tâche | non |
+**Toutes les icônes se valent donc** : lanceur « ECU », « ECU — Engine Control
+Unit » posée par Chrome, icône épinglée. Un commit dans n'importe quel projet
+apparaît dans ECU dans les deux à quatre minutes, sans rien faire.
 
-Le rafraîchissement reste le fait du lanceur « ECU », parce que personne ne veut
-deux minutes de calcul à chaque ouverture ni en tâche de fond permanente. Ouvrir
-par l'icône de Chrome montre donc l'état du dernier rafraîchissement.
+> Jusqu'au 23/09/2026, seul le lanceur « ECU » recalculait. Or on ouvre ECU par
+> l'icône de Chrome : un commit gearbox de 17:04 n'avait toujours pas paru à
+> 17:40, et aucun bouton « Recharger » ne pouvait apparaître, faute de nouvelles
+> données.
 
 > Historique : la première version posait un raccourci dans le dossier
 > Démarrage. Il ne joue qu'à l'ouverture de session — et le 23/09/2026 la machine

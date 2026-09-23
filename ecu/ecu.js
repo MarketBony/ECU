@@ -1303,9 +1303,25 @@ function surveillerVersion() {
     ajusterHisto();
   }
 
+  // Fenêtre cachée (derrière l'éditeur, réduite) : on recharge sans demander.
+  // C'est le cas normal — on code dans un projet, la veille recalcule la
+  // galaxie, et en revenant sur ECU on veut la trouver à jour, pas cliquer. Les
+  // réglages survivent au rechargement. Fenêtre visible : on ne retire pas la
+  // vue sous les yeux, on propose. Au plus un rechargement par minute, pour
+  // qu'aucun décalage entre version.json et data.json ne tourne en boucle.
+  function rechargementAutorise() {
+    try {
+      const der = +sessionStorage.getItem('ecu-recharge') || 0;
+      if (Date.now() - der < 60000) return false;
+      sessionStorage.setItem('ecu-recharge', String(Date.now()));
+      return true;
+    } catch (e) { return false; }
+  }
+
   function enLigne(v) {
     const dernier = DATA.hist && DATA.hist.length ? DATA.hist[0].h : '';
     if (v.hash !== DATA.hash || v.dernier !== dernier) {
+      if (document.hidden && rechargementAutorise()) { location.reload(); return; }
       bandeau.classList.add('show');
       bandeau.classList.remove('froid');
       bouton.style.display = '';
