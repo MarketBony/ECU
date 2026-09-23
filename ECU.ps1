@@ -169,6 +169,16 @@ function Rafraichir-Graphe {
         else { Write-Host 'pas indexe' -ForegroundColor DarkYellow }
     }
 
+    # La copie de global-graph.json dans ce depot est la SEULE sauvegarde des
+    # noeuds issus des documents : graphify-out/ est exclu de git dans les cinq
+    # projets. Elle n'etait rafraichie que par rebuild.ps1, et le 23/09/2026 on
+    # a decouvert qu'elle datait de trois jours — sans ECU, sans Limagrain, sans
+    # les 185 000 tokens de la derniere passe. On la tient donc a jour ici, a
+    # chaque rafraichissement. La COMMITER reste un geste delibere : apres une
+    # passe documents, pas apres chaque push (voir NOUVEAU-PROJET-BONY.md).
+    Copy-Item (Join-Path $env:USERPROFILE '.graphify\global-graph.json') `
+              (Join-Path $Kb 'global-graph.json') -Force -ErrorAction SilentlyContinue
+
     # La sortie du moteur est REEMISE, pas avalee. Un recalcul complet dure
     # ~2 min (210 iterations) et l'ancienne version affichait une ligne figee
     # sans rien d'autre : le 22/09/2026, un calcul parfaitement normal a ete

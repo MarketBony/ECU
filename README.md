@@ -149,7 +149,10 @@ fonctionne dans n'importe quelle session, dans n'importe quel dossier.
 ```
 
 Indexe le code (gratuit), installe les hooks, enregistre le projet et l'ajoute à
-`projets.ps1`. Ensuite chaque commit met le réseau à jour tout seul.
+`projets.ps1`. Ensuite chaque commit met à jour **l'index du projet** tout seul ;
+le graphe global et la galaxie suivent au lancement suivant d'ECU. Il n'y a rien
+à faire dans ECU après un push de code — le détail, et la seule exception (la
+passe documents), sont dans `NOUVEAU-PROJET-BONY.md`, section « Après un push ».
 
 Pour y ajouter aussi les documents (README, CLAUDE.md, PDF, logos) : ouvrir Claude
 Code dans le dossier et taper `/graphify .` — ça coûte des tokens, une seule fois.

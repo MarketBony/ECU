@@ -14,8 +14,20 @@ fonctions, classes et concepts des projets ; les arêtes sont les appels, import
 relations sémantiques.
 
 À quoi il sert : **poser une question au graphe coûte ~16× moins de tokens que
-grepper puis lire les fichiers.** Une fois un projet branché, chaque commit met le
-réseau à jour tout seul, gratuitement.
+grepper puis lire les fichiers.**
+
+**Ce qui se met à jour, et quand** — à lire avant d'écrire la moindre procédure
+de « push » :
+
+| Quoi | Mis à jour par | Quand |
+|---|---|---|
+| L'index **du projet** (`<projet>\graphify-out\graph.json`) | le hook `post-commit` | à chaque commit, tout seul, gratuit |
+| Le **graphe global** (`~\.graphify\global-graph.json`) | `ECU.ps1` | à chaque lancement d'ECU (ou `ECU.ps1 -Rafraichir`) |
+| La **galaxie** (`ECU\ecu\data.json`) | `ECU.ps1` | idem |
+
+Le hook ne touche **que** l'index du projet. Entre deux lancements d'ECU, le
+graphe global a donc un peu de retard sur le code : c'est normal et sans danger,
+ECU rattrape tout au lancement suivant.
 
 ### Où vit quoi
 
@@ -67,7 +79,7 @@ Une seule commande fait tout. Remplacer le chemin par celui du nouveau projet.
 
 | Option | Effet |
 |---|---|
-| `-Github` | crée le dépôt **privé** `MarketBony/<nom>` et pousse. **Demander à Romane avant** : c'est une action publique sur son compte. |
+| `-Github` | crée le dépôt **privé** `MarketBony/<nom>` et pousse. **Demander à Théo avant** : c'est une action publique sur le compte GitHub de l'entreprise. |
 | `-Tag <nom>` | force le nom dans le graphe (par défaut : le nom du dépôt GitHub, sinon le nom du dossier) |
 | `-SansCarte` | saute le recalcul de la disposition 3D (~1 min) |
 
@@ -113,8 +125,8 @@ L'indexation du code est faite. Les **documents** (README, CLAUDE.md, cahier des
 charges, PDF, logos) ne le sont pas : ils exigent une lecture par un modèle, donc
 des tokens.
 
-Romane surveille sa consommation de près. **Lui annoncer le nombre de fichiers
-concernés et demander avant de lancer.** Ordre de grandeur constaté : environ
+La consommation de tokens se surveille de près. **Annoncer à Théo le nombre de
+fichiers concernés et le coût estimé, et demander avant de lancer.** Ordre de grandeur constaté : environ
 **20 000 tokens par fichier non-code** (58 fichiers ont coûté 1,29 M).
 
 Pour compter sans rien dépenser :
@@ -147,9 +159,13 @@ Le nouveau projet doit apparaître dans la légende « Couleur par → Projet »
 
 ### 5. Sauvegarder l'état du réseau
 
+Un branchement change `projets.ps1` et le graphe global : c'est l'un des rares
+moments où l'on commite le dépôt ECU (voir « Après un push » plus bas). Nommer
+les fichiers plutôt que `git add -A`, pour ne rien embarquer par accident :
+
 ```powershell
 cd "C:\Users\Operateur\Documents\ECU"
-git add -A
+git add projets.ps1 global-graph.json ecu/data.json ecu/version.json
 git commit -m "Branchement de MON-PROJET sur ECU"
 git push origin master
 ```
@@ -242,6 +258,47 @@ Journal dans `~/.cache/graphify-rebuild.log`.
 
 Après un `git pull` : `graphify update <dossier>` (aucun LLM, instantané), ou
 simplement lancer ECU, qui le fait pour tous les projets.
+
+---
+
+## Après un push, après une passe documents
+
+> **À une session Claude qui travaille dans un projet branché :** il n'existe
+> **pas** d'étape « pousser sur ECU » après un push de code. Commite et pousse ton
+> projet, c'est tout. Le hook a déjà mis l'index du projet à jour ; ECU rattrapera
+> le graphe global et la galaxie à son prochain lancement. **Ne commite rien dans
+> le dépôt ECU depuis une autre session.**
+
+| Situation | À faire | Dans le dépôt ECU |
+|---|---|---|
+| Commit ou push de code dans un projet | rien de plus | **rien** — surtout pas de commit |
+| Voir le changement tout de suite dans la galaxie | `ECU.ps1 -Rafraichir` | rien à commiter |
+| Passe documents (`/graphify .`) terminée | `ECU.ps1 -Rafraichir`, puis commit + push de `global-graph.json` | c'est la sauvegarde des tokens dépensés |
+
+**Pourquoi ne jamais commiter ECU après un push de code.** `global-graph.json` et
+`ecu/data.json` pèsent ~5 Mo à eux deux. À dix push par jour, ce serait ~12 Go
+par an dans l'historique — GitHub alerte à 1 Go. Et ce serait inutile : tout ce
+qui vient du code se régénère gratuitement, à l'identique.
+
+**Pourquoi, en revanche, commiter ECU après une passe documents.** `graphify-out/`
+est exclu de git dans tous les projets. La copie de `global-graph.json` dans ECU
+est donc la **seule sauvegarde versionnée** des nœuds issus des documents —
+ceux qui ont coûté des tokens. Le 23/09/2026 on a découvert qu'elle datait de
+trois jours et ne contenait pas la dernière passe (185 000 tokens) : un disque
+perdu, et cette passe était perdue avec. `ECU.ps1` la tient désormais à jour à
+chaque rafraîchissement ; la commiter reste un geste délibéré.
+
+### Ce que graphify pose dans le projet, et ce qu'on en fait
+
+`graphify claude install` et `graphify hook install` ajoutent trois fichiers au
+dossier du projet. Ils apparaissent comme des modifications en cours — **ce n'est
+pas du travail humain**, il ne faut pas les confondre avec lui.
+
+| Fichier | Le commiter ? | Pourquoi |
+|---|---|---|
+| `CLAUDE.md` (section `## graphify`) | **oui** | dit aux sessions Claude futures d'interroger le graphe avant de grepper — c'est de là que vient toute l'économie de tokens |
+| `.claude/settings.json` | **non** | porte le chemin absolu de `graphify.EXE` sur cette machine ; faux partout ailleurs |
+| `.gitattributes` | **non** | déclare une fusion sur `graphify-out/graph.json`, qui est exclu de git : sans objet |
 
 ---
 

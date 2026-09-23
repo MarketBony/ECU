@@ -31,9 +31,11 @@ Cinq modifications depuis la rédaction. Le reste du document est inchangé.
 
 ## 0. Qui, quoi, où
 
-**Théo** travaille depuis le compte Claude de sa collègue Romane pour économiser
-ses propres tokens. Les commits existants de ce dépôt sont signés
-« Romane Chambon » pour cette raison — **l'auteur réel est Théo**. ✅ **Réglé :**
+**Théo** porte le projet. Les premières sessions tournaient sur le compte Claude
+de sa collègue Romane, ce qui n'est plus le cas depuis le 23/09/2026. Les premiers
+commits de ce dépôt sont signés « Romane Chambon » pour cette raison — **l'auteur
+réel est Théo**, et c'est lui qu'on consulte avant toute action publique ou
+coûteuse en tokens. ✅ **Réglé :**
 `user.name` / `user.email` du dépôt valent
 `Theo <theo.labonne@bonyauto-mobile.com>`, effectif depuis `e8ea00a`.
 L'historique antérieur n'est pas réécrit.

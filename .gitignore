@@ -13,3 +13,14 @@ graphify-out/
 # Ne pas confondre avec .graphifyignore, à côté : celui-là dit à graphify quoi
 # ne PAS lire, et lui est versionné — c'est lui qui empêche ECU de s'indexer
 # en boucle sur les fichiers qu'il réécrit à chaque lancement.
+
+# Posés par `graphify claude install` / `graphify hook install`, et à ne pas
+# versionner (règle écrite dans NOUVEAU-PROJET-BONY.md, « Ce que graphify pose ») :
+#  - .claude/settings.json porte le chemin ABSOLU de graphify.EXE sur cette
+#    machine, faux partout ailleurs ;
+#  - .gitattributes déclare une fusion sur graphify-out/graph.json, exclu
+#    juste au-dessus : sans objet.
+# CLAUDE.md, lui, reste versionné : c'est lui qui dit aux sessions futures
+# d'interroger le graphe avant de grepper.
+.claude/settings.json
+.gitattributes
