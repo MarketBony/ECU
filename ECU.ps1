@@ -119,9 +119,18 @@ function Get-Navigateur {
 # A l'installation, Chrome pose lui-meme un raccourci dans « Chrome Apps » qui
 # porte le bon --app-id et le bon profil. Le lancer, c'est obtenir l'icone ECU ;
 # passer par « --app=<url> » comme avant, c'est rester groupe sous Chrome.
+#
+# LE NOM DE CE DOSSIER DEPEND DE LA LANGUE : « Chrome Apps » en anglais,
+# « Applications Chrome » en francais. La premiere version ne cherchait que le
+# nom anglais : elle n'a jamais vu l'application, pourtant installee le 22/09 a
+# 12:08. ECU.ps1 affichait donc « pas encore installe » a chaque lancement et
+# ouvrait une fenetre --app= rangee sous l'icone Chrome. On reconnait desormais
+# le raccourci a ce qu'il FAIT (il porte --app-id=), pas a l'endroit ou il est.
 function Raccourci-Pwa {
-    $d = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Chrome Apps'
-    return Get-ChildItem $d -Filter '*ECU*.lnk' -ErrorAction SilentlyContinue |
+    $menu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
+    $sh = New-Object -ComObject WScript.Shell
+    return Get-ChildItem $menu -Recurse -Filter '*.lnk' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match 'ECU' -and $sh.CreateShortcut($_.FullName).Arguments -match '--app-id=' } |
         Select-Object -First 1
 }
 

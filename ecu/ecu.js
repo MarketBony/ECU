@@ -1131,11 +1131,10 @@ addEventListener('beforeinstallprompt', e => {
   invite = e;
   boutonInstall.classList.add('show');
 });
-// Filet : « beforeinstallprompt » ne se déclenche pas partout — déjà installé,
-// navigateur qui ne le gère pas, page ouverte hors du serveur local. On montre
-// quand même le bouton, qui explique alors le chemin manuel. Mieux vaut une
-// consigne visible qu'un bouton qui n'apparaît jamais.
-setTimeout(() => boutonInstall.classList.add('show'), 4000);
+// Pas de filet qui forcerait le bouton : Chrome ne propose l'installation que
+// si l'application ne l'est PAS encore. La version précédente l'affichait de
+// force au bout de 4 s — donc aussi dans ECU déjà installé, où il n'avait plus
+// rien à faire. Si l'événement ne vient pas, c'est que la question est réglée.
 
 boutonInstall.onclick = async () => {
   if (!invite) {
