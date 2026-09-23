@@ -25,6 +25,11 @@ $ErrorActionPreference = 'Stop'
 $Kb  = $PSScriptRoot
 $nom = 'ECU.lnk'
 $cible = Join-Path ([Environment]::GetFolderPath('Desktop')) $nom
+# Le MEME lanceur dans le menu Demarrer, la ou mene la recherche Windows. Une
+# ancienne entree y pointait sur graphify-kb\kb\ECU.bat, morte depuis le
+# deplacement du 22/09 : taper « ECU » dans la recherche ouvrait un raccourci
+# casse. Elle est desormais posee et tenue a jour ici, avec celle du Bureau.
+$cibleMenu = Join-Path ([Environment]::GetFolderPath('Programs')) $nom
 # Entree de demarrage : elle ne lance QUE le serveur, sans fenetre ni calcul.
 # Sans elle, l'application epinglee a la barre des taches ouvre Chrome sans
 # serveur, et la PWA se charge depuis son cache — hors ligne, a chaque fois.
@@ -35,10 +40,10 @@ $nomSrv   = 'ECU - serveur.lnk'
 $cibleSrv = Join-Path ([Environment]::GetFolderPath('Startup')) $nomSrv
 
 if ($Retirer) {
-    foreach ($c in @($cible, $cibleSrv)) {
+    foreach ($c in @($cible, $cibleMenu, $cibleSrv)) {
         if (Test-Path $c) { Remove-Item $c -Force; Write-Output "  retire  $c" }
     }
-    if (-not (Test-Path $cible) -and -not (Test-Path $cibleSrv)) { Write-Output '  plus aucun raccourci ECU' }
+    if (-not ((Test-Path $cible) -or (Test-Path $cibleMenu) -or (Test-Path $cibleSrv))) { Write-Output '  plus aucun raccourci ECU' }
     Write-Output ''
     return
 }
@@ -70,14 +75,16 @@ foreach ($f in @($vbs, $icone)) {
 }
 
 $shell = New-Object -ComObject WScript.Shell
-$r = $shell.CreateShortcut($cible)
-$r.TargetPath       = Join-Path $env:SystemRoot 'System32\wscript.exe'
-$r.Arguments        = '"' + $vbs + '"'
-$r.WorkingDirectory = $Kb
-$r.IconLocation     = $icone + ',0'
-$r.Description      = 'ECU - reseau de connaissance des projets Bony auto-mobile'
-$r.Save()
-Write-Output "  cree    $cible"
+foreach ($c in @($cible, $cibleMenu)) {
+    $r = $shell.CreateShortcut($c)
+    $r.TargetPath       = Join-Path $env:SystemRoot 'System32\wscript.exe'
+    $r.Arguments        = '"' + $vbs + '"'
+    $r.WorkingDirectory = $Kb
+    $r.IconLocation     = $icone + ',0'
+    $r.Description      = 'ECU - reseau de connaissance des projets Bony auto-mobile'
+    $r.Save()
+    Write-Output "  cree    $c"
+}
 
 Write-Output ''
 Write-Output '  Double-clic : ECU s''ouvre tout de suite, sans console.'
