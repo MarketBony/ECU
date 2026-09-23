@@ -217,7 +217,24 @@ Un avertissement sur le garde `__main__` du multiprocessing apparaît, puis
 l'extraction repart en séquentiel. C'est plus lent, sans conséquence sur le
 résultat. Ne pas s'en alarmer.
 
-### 5. `graphify global add` avertit quand un tag change de cible
+### 5. Un serveur démarré depuis une session Claude meurt avec elle
+
+**Ne jamais laisser tourner le serveur ECU démarré par une session Claude.** Il
+survit à la fin d'une commande, mais pas à la fin de la session : l'application
+Claude emporte avec elle les processus qu'elle a lancés. La fenêtre Chrome, elle,
+reste ouverte — et le service worker continue de la servir depuis son cache.
+
+Vécu le 22-23/09/2026 : pendant une journée, toutes les fois où ECU « marchait »,
+c'était sur un serveur démarré par la session. Elle s'est terminée, la fenêtre a
+basculé hors ligne, et relancer la fenêtre n'y changeait rien. Le journal
+PowerShell de Windows l'a montré : aucun `ECU.ps1` n'avait été lancé hors de la
+session depuis la veille.
+
+Une session qui teste ECU **arrête son serveur avant de rendre la main**, et
+laisse Théo le démarrer lui-même — icône ECU du Bureau, ou entrée « ECU -
+serveur » du dossier Démarrage.
+
+### 6. `graphify global add` avertit quand un tag change de cible
 
 `warning: repo tag 'X' previously pointed to …, now updating to …` est
 **informatif**, pas une erreur. C'est le comportement voulu quand un projet

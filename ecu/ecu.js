@@ -1290,14 +1290,17 @@ function surveillerVersion() {
   // arrivé le 22/09/2026 : ECU semblait ignorer un projet qui y était depuis
   // une heure, et le vrai coupable était un serveur arrêté. Un échec de sondage
   // ne doit donc PAS être avalé ; c'est le piège n°8 du plan, à l'envers.
+  // Le REMÈDE est dans le texte visible, pas dans l'infobulle. Le 23/09/2026,
+  // Théo a vu « hors ligne » et a fait le geste naturel : rouvrir la fenêtre,
+  // recharger. Ni l'un ni l'autre ne démarre le serveur — seule l'icône ECU du
+  // Bureau le fait. Un diagnostic juste qui ne dit pas quoi faire ne suffit pas.
   function horsLigne() {
     bandeau.classList.add('show', 'froid');
     bouton.style.display = 'none';
-    texte.textContent = DATA.date
-      ? `hors ligne — données du ${dateCourte(DATA.date)}`
-      : 'hors ligne — serveur ECU arrêté';
-    bandeau.title = 'Le serveur local ne répond pas : ces données viennent du cache. '
-      + 'Relance ECU par son icône.';
+    const quand = DATA.date ? ` · données du ${dateCourte(DATA.date)}` : '';
+    texte.textContent = `serveur arrêté — double-clique l'icône ECU du Bureau${quand}`;
+    bandeau.title = 'Le serveur local ne répond pas : la fenêtre est servie depuis le cache. '
+      + 'Recharger ou rouvrir la fenêtre ne le redémarre pas ; l\'icône ECU du Bureau, si.';
     ajusterHisto();
   }
 
